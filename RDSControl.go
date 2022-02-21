@@ -111,7 +111,7 @@ func Test__rdstest(_t *testing.T) {
 			TimeoutAction:         aws.String("ForceApplyCapacityChange"),
 		},
 	}
-	//DB 생성 함수
+	//DB 생성 
 	_, err = makeDBCluster(context.TODO(), client, makeinput)
 	if err != nil {
 		fmt.Println("Create DB Cluster Error")
@@ -125,7 +125,7 @@ func Test__rdstest(_t *testing.T) {
 		SkipFinalSnapshot:   *aws.Bool(true),
 	}
 
-	// DB 삭제 함수
+	// DB 삭제
 	_, err = removeDBCluster(context.TODO(), client, deleteinput)
 	if err != nil {
 		fmt.Println("Create DB Cluster Error")
