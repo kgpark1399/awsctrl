@@ -73,7 +73,7 @@ func (t *C_RDS) control(_td_ctl TD_Control) error {
 		}
 		fmt.Println("Delete DB")
 	default:
-		return errors.New("")
+		return errors.New("Error")
 	}
 	return nil
 }
