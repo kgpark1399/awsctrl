@@ -139,7 +139,7 @@ func Test__rdstest(_t *testing.T) {
 		SkipFinalSnapshot:   *aws.Bool(true),
 	}
 
-	//DB 생성 함수
+	//DB 생성(makeDBCluster 함수 실행)
 	_, err = makeDBCluster(context.TODO(), client, makeinput)
 	if err != nil {
 		fmt.Println("Create DB Cluster Error")
@@ -147,7 +147,7 @@ func Test__rdstest(_t *testing.T) {
 		return
 	}
 
-	// DB 삭제 함수
+	// DB 삭제(removeDBCluster 함수 실행)
 	_, err = removeDBCluster(context.TODO(), client, deleteinput)
 	if err != nil {
 		fmt.Println("Create DB Cluster Error")
