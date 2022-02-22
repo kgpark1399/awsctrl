@@ -43,16 +43,20 @@ type TD_DB_property string
 
 //DB 속성 정의
 const (
-	TD_DB__Name   string = "devtoolstest1121"
-	TD_DB__Engine string = "aurora"
-	TD_DB__Mode   string = "serverless"
+	TD_DB__Name    string = "devtoolstest1121"
+	TD_DB__Engine  string = "aurora"
+	TD_DB__Mode    string = "serverless"
+	TD_DB__UserID  string = "master"
+	TD_DB__UserPWD string = "devpassword123!"
 )
 
 // DB 속성 구조체
 type C_RDS struct {
-	TD_DB__Name   string
-	TD_DB__Engine string
-	TD_DB__Mode   string
+	TD_DB__Name    string
+	TD_DB__Engine  string
+	TD_DB__Mode    string
+	TD_DB__UserID  string
+	TD_DB__UserPWD string
 }
 
 // DB INPUT(string) 데이터 "" 입력 시 에러
@@ -121,8 +125,8 @@ func Test__rdstest(_t *testing.T) {
 		DBClusterIdentifier: &dbinput.TD_DB__Name,
 		Engine:              &dbinput.TD_DB__Engine,
 		EngineMode:          &dbinput.TD_DB__Mode,
-		MasterUsername:      aws.String("master"),
-		MasterUserPassword:  aws.String("devtoolstest123"),
+		MasterUsername:      &dbinput.TD_DB__UserID,
+		MasterUserPassword:  &dbinput.TD_DB__UserPWD,
 		ScalingConfiguration: &types.ScalingConfiguration{
 			AutoPause:             aws.Bool(true),
 			MinCapacity:           aws.Int32(1),
@@ -139,7 +143,7 @@ func Test__rdstest(_t *testing.T) {
 		SkipFinalSnapshot:   *aws.Bool(true),
 	}
 
-	//DB 생성(makeDBCluster 함수 실행)
+	//DB 생성 (makeDBCluster 함수 실행)
 	_, err = makeDBCluster(context.TODO(), client, makeinput)
 	if err != nil {
 		fmt.Println("Create DB Cluster Error")
@@ -147,7 +151,7 @@ func Test__rdstest(_t *testing.T) {
 		return
 	}
 
-	// DB 삭제(removeDBCluster 함수 실행)
+	// DB 삭제 (removeDBCluster 함수 실행)
 	_, err = removeDBCluster(context.TODO(), client, deleteinput)
 	if err != nil {
 		fmt.Println("Create DB Cluster Error")
