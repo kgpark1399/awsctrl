@@ -34,27 +34,14 @@ const (
 
 // 에러 정의
 const (
-	def__s_dbname_null   string = "DB 이름 공백"
-	def__s_dbengine_null string = "DB Type 공백"
-	def__s_dbmode_null   string = "DB Mode 공백"
-)
-
-type TD_DB_property string
-
-//DB 속성 정의
-const (
-	TD_DB__Name    string = "devtoolstest1121"
-	TD_DB__Engine  string = "aurora"
-	TD_DB__Mode    string = "serverless"
-	TD_DB__UserID  string = "master"
-	TD_DB__UserPWD string = "devpassword123!"
+	def__s_dbname_null string = "DB 이름 공백"
+	def__s_dbid_null   string = "DB ID 공백"
+	def__s_dbpwd_null  string = "DB PASSWD 공백"
 )
 
 // DB 속성 구조체
 type C_RDS struct {
 	TD_DB__Name    string
-	TD_DB__Engine  string
-	TD_DB__Mode    string
 	TD_DB__UserID  string
 	TD_DB__UserPWD string
 }
@@ -65,10 +52,10 @@ func (t *C_RDS) control(_td_ctl TD_Control) error {
 	case TD_Control__Create:
 		if t.TD_DB__Name == "" {
 			return errors.New(def__s_dbname_null)
-		} else if t.TD_DB__Engine == "" {
-			return errors.New(def__s_dbengine_null)
-		} else if t.TD_DB__Mode == "" {
-			return errors.New(def__s_dbengine_null)
+		} else if t.TD_DB__UserID == "" {
+			return errors.New(def__s_dbid_null)
+		} else if t.TD_DB__UserPWD == "" {
+			return errors.New(def__s_dbid_null)
 		}
 		fmt.Println("Create DB")
 	case TD_Control__Delete:
@@ -117,16 +104,19 @@ func Test__rdstest(_t *testing.T) {
 
 	client := rds.NewFromConfig(cfg)
 
-	// DBNAME 호출 위함
-	dbinput := C_RDS{}
+	// // 구조체 호출
+	Property := &C_RDS{}
+	Property.TD_DB__Name = "test111"
+	Property.TD_DB__UserID = "master"
+	Property.TD_DB__UserPWD = "devttools1234"
 
 	// DB 생성 INPUT 값 설정
 	makeinput := &rds.CreateDBClusterInput{
-		DBClusterIdentifier: &dbinput.TD_DB__Name,
-		Engine:              &dbinput.TD_DB__Engine,
-		EngineMode:          &dbinput.TD_DB__Mode,
-		MasterUsername:      &dbinput.TD_DB__UserID,
-		MasterUserPassword:  &dbinput.TD_DB__UserPWD,
+		DBClusterIdentifier: &Property.TD_DB__Name,
+		Engine:              aws.String("aurora"),
+		EngineMode:          aws.String("serverless"),
+		MasterUsername:      &Property.TD_DB__UserID,
+		MasterUserPassword:  &Property.TD_DB__UserPWD,
 		ScalingConfiguration: &types.ScalingConfiguration{
 			AutoPause:             aws.Bool(true),
 			MinCapacity:           aws.Int32(1),
