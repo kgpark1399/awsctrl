@@ -93,7 +93,9 @@ func removeDBCluster(c context.Context, api RDSDeleteDBClusterAPI, deleteinput *
 	return api.DeleteDBCluster(c, deleteinput)
 }
 
-// 내부 함수
+// ------------------------------------------------------------------------------ //
+
+// 메인 함수
 func Test__rdstest(_t *testing.T) {
 
 	// AWS Config 파일 로드 및 접속 세션 구성
@@ -104,11 +106,12 @@ func Test__rdstest(_t *testing.T) {
 
 	client := rds.NewFromConfig(cfg)
 
-	// // 구조체 호출
-	Property := &C_RDS{}
-	Property.TD_DB__Name = "test111"
-	Property.TD_DB__UserID = "master"
-	Property.TD_DB__UserPWD = "devttools1234"
+	// 구조체 호출
+	Property := &C_RDS{
+		TD_DB__Name:    string("test111"),
+		TD_DB__UserID:  string("master"),
+		TD_DB__UserPWD: string("devtoolstest111"),
+	}
 
 	// DB 생성 INPUT 값 설정
 	makeinput := &rds.CreateDBClusterInput{
