@@ -596,6 +596,8 @@ func removeDomain(c context.Context, api ROUTE53DeleteDomainAPI, input *route53d
 // <------------------------------------------------------------------------->
 
 func Test_tmp2(_t *testing.T) {
-	define := C__S3{}
-	define.Bucket__change("testdevtools1231", "public-read-write")
+	ctrlroute53 := C__Route53{}
+	// ctrlroute53.Reocrd__change("Z07036302DA6YT5R06WYS", "test22.devtoolstest2.com", "A", "1.1.1.1", "DELETE")
+	// ctrlroute53.Domain__register("devtoolstest1231.com.", "kgpark@devtools.kr", false)
+	ctrlroute53.Domain__remove("devtoolstest1231.com")
 }
