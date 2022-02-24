@@ -10,6 +10,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	rdstypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
+	route53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
+	"github.com/aws/aws-sdk-go-v2/service/route53domains"
+	domaintypes "github.com/aws/aws-sdk-go-v2/service/route53domains/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
@@ -17,121 +21,198 @@ import (
 // 구조체 정의
 // -----------------------------------------------------------------------------//
 
-type AWSCTRL struct {
-	TD__S3  C__S3
-	TD__RDS C__RDS
+type AWS_Ctrl struct {
+	TD__S3      C__S3
+	TD__RDS     C__RDS
+	TD__Route53 C__Route53
 }
 
 // RDS DB 구조체
 type C__RDS struct {
-	s_db_name string
-	s_id      string
-	s_pw      string
+	s__db_name string
+	s__id      string
+	s__pw      string
 }
 
 // S3 구조체
 type C__S3 struct {
-	s_bucket_name string
-	s_bucket_acl  string
-	s_object_name string
-	s_object_acl  string
+	s__bucket__name string
+	s__bucket__acl  string
+	s__object__name string
+	s__object__acl  string
 }
 
-// var err_rdb__config__null = errors.New("RDB - Config - 공백")
-// var err_s3__config__null = errors.New("S3 - config - 공백")
-
-// DB 생성, 삭제 속성 값
-const (
-	Def_db__name    string = "devtoolstest12312"
-	Def_db__id      string = "master"
-	Def_db__pwd     string = "test112233"
-	Def_bucket_name string = "devtoolsbucket11"
-	Def_object_name string = "C:\\work_space\\devops\\awsctrl\\src\\test1"
-)
-
-// ------------------------------------------------------------------------------//
-// 조건 통과 시 명령 함수 실행
-func Test_all(_t *testing.T) {
-	var err error
-	rds := &C__RDS{}
-	s3 := &C__S3{}
-
-	// DB 생성
-	err = rds.DB__create(Def_db__name, Def_db__id, Def_db__pwd)
-	if err != nil {
-		_t.Error(err)
-		return
-	}
-
-	// DB 삭제
-	err = rds.DB__remove(Def_db__name)
-	if err != nil {
-		_t.Error(err)
-		return
-	}
-
-	// DB 조회
-	err = rds.DB__getinfo(Def_db__name)
-	if err != nil {
-		_t.Error(err)
-		return
-	}
-
-	// Bucket 생성
-	err = s3.Bucket__create(Def_bucket_name)
-	if err != nil {
-		_t.Error(err)
-		return
-	}
-
-	// Bucket 삭제
-	err = s3.Bucket__remove(Def_bucket_name)
-	if err != nil {
-		_t.Error(err)
-		return
-	}
-
-	// Object 업로드
-	err = s3.Object__uplaod(Def_bucket_name, Def_object_name)
-	if err != nil {
-		_t.Error(err)
-		return
-	}
-
-	// Object 삭제
-	err = s3.Object__remove(Def_bucket_name, Def_object_name)
-	if err != nil {
-		_t.Error(err)
-		return
-	}
+// Route53 구조체
+type C__Route53 struct {
+	s__record__name        string
+	s__record__type        string
+	s__record__value       string
+	s__record__action      string
+	s__hostzone__id        string
+	s__domain__name        string
+	s__domain__admin_email string
+	b__domain__auto_renew  bool
 }
 
-// ------------------------------------------------------------------------------ //
 
 // 실행 함수 모음
 // ------------------------------------------------------------------------------ //
 
+// 레코드 변경 함수(추가, 삭제)
+// (sample) s__record__name = "test.devtoolstest2.com"
+func (t *C__Route53) Reocrd__change(_s__hostzone__id, _s_record_name, _s_record_type, _s__record__value, _s__record__action string) error {
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("ap-northeast-2"))
+	if err != nil {
+		return err
+	}
+
+	client := route53.NewFromConfig(cfg)
+
+	t.s__hostzone__id = _s__hostzone__id
+	t.s__record__name = _s_record_name
+	t.s__record__type = _s_record_type
+	t.s__record__value = _s__record__value
+	t.s__record__action = _s__record__action
+
+	record__create_input := &route53.ChangeResourceRecordSetsInput{
+		HostedZoneId: &t.s__hostzone__id,
+		ChangeBatch: &route53types.ChangeBatch{
+			Changes: []route53types.Change{
+				{
+					Action: route53types.ChangeAction(t.s__record__action),
+					ResourceRecordSet: &route53types.ResourceRecordSet{
+						Name: &t.s__record__name,
+						Type: route53types.RRType(t.s__record__type),
+						TTL:  aws.Int64(300),
+						ResourceRecords: []route53types.ResourceRecord{
+							{
+								Value: &t.s__record__value,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// func ChangeRecord 함수 실행(레코드 추가)
+	_, err = changeRecord(context.TODO(), client, record__create_input)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// 도메인 등록 함수
+func (t *C__Route53) Domain__register(_s__domain__name, _s__domain__admin_email string, _b__domain__auto_renew bool) error {
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
+	if err != nil {
+		return err
+	}
+
+	client := route53domains.NewFromConfig(cfg)
+
+	t.s__domain__name = _s__domain__name
+	t.s__domain__admin_email = _s__domain__admin_email
+	t.b__domain__auto_renew = _b__domain__auto_renew
+
+	domain__register_input := &route53domains.RegisterDomainInput{
+		AdminContact: &domaintypes.ContactDetail{
+			AddressLine1:     aws.String("1 Main Street"),
+			AddressLine2:     aws.String("2 Main Street"),
+			City:             aws.String("Suwon"),
+			ContactType:      domaintypes.ContactTypePerson,
+			CountryCode:      domaintypes.CountryCodeKr,
+			Email:            &t.s__domain__admin_email,
+			FirstName:        aws.String("devtools"),
+			LastName:         aws.String("ltd"),
+			OrganizationName: aws.String("devtoolstest"),
+			PhoneNumber:      aws.String("+82.0212341234"),
+			ZipCode:          aws.String("12345"),
+		},
+		DomainName:                      &t.s__domain__name,
+		DurationInYears:                 aws.Int32(1),
+		PrivacyProtectAdminContact:      aws.Bool(false),
+		PrivacyProtectRegistrantContact: aws.Bool(false),
+		PrivacyProtectTechContact:       aws.Bool(false),
+		RegistrantContact: &domaintypes.ContactDetail{
+			AddressLine1:     aws.String("1 Main Street"),
+			AddressLine2:     aws.String("2 Main Street"),
+			City:             aws.String("Suwon"),
+			ContactType:      domaintypes.ContactTypePerson,
+			CountryCode:      domaintypes.CountryCodeKr,
+			Email:            &t.s__domain__admin_email,
+			FirstName:        aws.String("devtools"),
+			LastName:         aws.String("ltd"),
+			OrganizationName: aws.String("devtoolstest"),
+			PhoneNumber:      aws.String("+82.0212341234"),
+			ZipCode:          aws.String("12345"),
+		},
+		TechContact: &domaintypes.ContactDetail{
+			AddressLine1:     aws.String("1 Main Street"),
+			AddressLine2:     aws.String("2 Main Street"),
+			City:             aws.String("Suwon"),
+			ContactType:      domaintypes.ContactTypePerson,
+			CountryCode:      domaintypes.CountryCodeKr,
+			Email:            &t.s__domain__admin_email,
+			FirstName:        aws.String("devtools"),
+			LastName:         aws.String("ltd"),
+			OrganizationName: aws.String("devtoolstest"),
+			PhoneNumber:      aws.String("+82.0212341234"),
+			ZipCode:          aws.String("12345"),
+		},
+		AutoRenew: &t.b__domain__auto_renew,
+	}
+
+	_, err = createDomain(context.TODO(), client, domain__register_input)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// 도메인 삭제 함수
+func (t *C__Route53) Domain__remove(_s__domain__name string) error {
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
+	if err != nil {
+		return err
+	}
+
+	client := route53domains.NewFromConfig(cfg)
+	t.s__domain__name = _s__domain__name
+
+	domain__remove_input := &route53domains.DeleteDomainInput{
+		DomainName: &t.s__domain__name,
+	}
+
+	_, err = removeDomain(context.TODO(), client, domain__remove_input)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // DB 생성 함수
-func (t *C__RDS) DB__create(_s_db_name, _s_id, _s_pw string) error {
+func (t *C__RDS) DB__create(_s__db__name, _s__id, _s__pw string) error {
 	// AWS Config 파일 로드 및 접속 세션 구성
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("ap-northeast-2"))
 	if err != nil {
 		return fmt.Errorf("configuration error - %v", err)
 	}
 
-	t.s_db_name = _s_db_name
-	t.s_id = _s_id
-	t.s_pw = _s_pw
+	t.s__db_name = _s__db__name
+	t.s__id = _s__id
+	t.s__pw = _s__pw
 
 	client := rds.NewFromConfig(cfg)
 
 	// DB 생성 INPUT 값 설정
 	db_make_input := &rds.CreateDBClusterInput{
-		DBClusterIdentifier: aws.String(t.s_db_name),
+		DBClusterIdentifier: aws.String(t.s__db_name),
 		Engine:              aws.String("aurora"),
 		EngineMode:          aws.String("serverless"),
-		MasterUsername:      aws.String(t.s_id),
-		MasterUserPassword:  aws.String(t.s_pw),
+		MasterUsername:      aws.String(t.s__id),
+		MasterUserPassword:  aws.String(t.s__pw),
 		ScalingConfiguration: &rdstypes.ScalingConfiguration{
 			AutoPause:             aws.Bool(true),
 			MinCapacity:           aws.Int32(1),
@@ -151,20 +232,20 @@ func (t *C__RDS) DB__create(_s_db_name, _s_id, _s_pw string) error {
 }
 
 // DB 삭제 함수
-func (t *C__RDS) DB__remove(_s_db_name string) error {
+func (t *C__RDS) DB__remove(_s__db__name string) error {
 	// AWS Config 파일 로드 및 접속 세션 구성
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("ap-northeast-2"))
 	if err != nil {
 		return fmt.Errorf("configuration error - %v", err)
 	}
 
-	t.s_db_name = _s_db_name
+	t.s__db_name = _s__db__name
 
 	client := rds.NewFromConfig(cfg)
 
 	// DB 삭제 INPUT 값 설정
 	db_remove_input := &rds.DeleteDBClusterInput{
-		DBClusterIdentifier: aws.String(t.s_db_name),
+		DBClusterIdentifier: aws.String(t.s__db_name),
 		SkipFinalSnapshot:   *aws.Bool(true),
 	}
 
@@ -177,7 +258,7 @@ func (t *C__RDS) DB__remove(_s_db_name string) error {
 }
 
 // DB 조회 함수
-func (t *C__RDS) DB__getinfo(_s_db_name string) error {
+func (t *C__RDS) DB__getinfo(_s__db__name string) error {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("ap-northeast-2"))
 	if err != nil {
 		return fmt.Errorf("configuration error - %v", err)
@@ -185,11 +266,11 @@ func (t *C__RDS) DB__getinfo(_s_db_name string) error {
 
 	client := rds.NewFromConfig(cfg)
 
-	t.s_db_name = _s_db_name
+	t.s__db_name = _s__db__name
 
 	// DB 조회 INPUT 값 설정
 	db__find_input := &rds.DescribeDBClustersInput{
-		DBClusterIdentifier: aws.String(t.s_db_name),
+		DBClusterIdentifier: aws.String(t.s__db_name),
 	}
 
 	// DB 조회
@@ -205,7 +286,7 @@ func (t *C__RDS) DB__getinfo(_s_db_name string) error {
 }
 
 // Bucket 생성
-func (t *C__S3) Bucket__create(_s_bucket_name string) error {
+func (t *C__S3) Bucket__create(_s__bucket__name string) error {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
 	if err != nil {
 		return fmt.Errorf("configuration error - %v", err)
@@ -213,10 +294,10 @@ func (t *C__S3) Bucket__create(_s_bucket_name string) error {
 
 	client := s3.NewFromConfig(cfg)
 
-	t.s_bucket_name = _s_bucket_name
+	t.s__bucket__name = _s__bucket__name
 
 	bucket__make_input := &s3.CreateBucketInput{
-		Bucket: aws.String(t.s_bucket_name),
+		Bucket: aws.String(t.s__bucket__name),
 	}
 
 	_, err = makeBucket(context.TODO(), client, bucket__make_input)
@@ -229,7 +310,7 @@ func (t *C__S3) Bucket__create(_s_bucket_name string) error {
 }
 
 // Bucket 삭제
-func (t *C__S3) Bucket__remove(_s_bukcket_name string) error {
+func (t *C__S3) Bucket__remove(_s__bukcket__name string) error {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
 	if err != nil {
 		return fmt.Errorf("configuration error - %v", err)
@@ -237,10 +318,10 @@ func (t *C__S3) Bucket__remove(_s_bukcket_name string) error {
 
 	client := s3.NewFromConfig(cfg)
 
-	t.s_bucket_name = _s_bukcket_name
+	t.s__bucket__name = _s__bukcket__name
 
 	bucket__remove_input := &s3.DeleteBucketInput{
-		Bucket: aws.String(t.s_bucket_name),
+		Bucket: aws.String(t.s__bucket__name),
 	}
 
 	_, err = removeBucket(context.TODO(), client, bucket__remove_input)
@@ -251,7 +332,7 @@ func (t *C__S3) Bucket__remove(_s_bukcket_name string) error {
 }
 
 // Buekct 권한 변경
-func (t *C__S3) Bucket__change(_s_bucket_name, _s_bucket_acl string) error {
+func (t *C__S3) Bucket__change(_s__bucket__name, _s__bucket__acl string) error {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
 	if err != nil {
 		return fmt.Errorf("configuration error - %v", err)
@@ -259,12 +340,12 @@ func (t *C__S3) Bucket__change(_s_bucket_name, _s_bucket_acl string) error {
 
 	client := s3.NewFromConfig(cfg)
 
-	t.s_bucket_name = _s_bucket_name
-	t.s_bucket_acl = _s_bucket_acl
+	t.s__bucket__name = _s__bucket__name
+	t.s__bucket__acl = _s__bucket__acl
 
 	bucket__change_input := &s3.PutBucketAclInput{
-		Bucket: &t.s_bucket_name,
-		ACL:    s3types.BucketCannedACL(t.s_bucket_acl),
+		Bucket: &t.s__bucket__name,
+		ACL:    s3types.BucketCannedACL(t.s__bucket__acl),
 	}
 
 	_, err = ChangeBucketAcl(context.TODO(), client, bucket__change_input)
@@ -276,7 +357,7 @@ func (t *C__S3) Bucket__change(_s_bucket_name, _s_bucket_acl string) error {
 
 // Object 업로드
 // (sample) _s_ob_name = "C:\\Temp\\test1.txt"
-func (t *C__S3) Object__uplaod(_s_bucket_name, _s_object_name string) error {
+func (t *C__S3) Object__uplaod(_s__bucket__name, _s__object__name string) error {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
 	if err != nil {
 		return fmt.Errorf("configuration error - %v", err)
@@ -284,10 +365,10 @@ func (t *C__S3) Object__uplaod(_s_bucket_name, _s_object_name string) error {
 
 	client := s3.NewFromConfig(cfg)
 
-	t.s_bucket_name = _s_bucket_name
-	t.s_object_name = _s_object_name
+	t.s__bucket__name = _s__bucket__name
+	t.s__object__name = _s__object__name
 
-	file, err := os.Open(t.s_object_name)
+	file, err := os.Open(t.s__object__name)
 	if err != nil {
 		return err
 	}
@@ -295,8 +376,8 @@ func (t *C__S3) Object__uplaod(_s_bucket_name, _s_object_name string) error {
 	defer file.Close()
 
 	object__upload_input := &s3.PutObjectInput{
-		Bucket: &t.s_bucket_name,
-		Key:    &t.s_object_name,
+		Bucket: &t.s__bucket__name,
+		Key:    &t.s__object__name,
 		Body:   file,
 	}
 
@@ -308,21 +389,21 @@ func (t *C__S3) Object__uplaod(_s_bucket_name, _s_object_name string) error {
 }
 
 // Object 삭제
-func (t *C__S3) Object__remove(_s_bucket_name, _s_object_name string) error {
+func (t *C__S3) Object__remove(_s__bucket__name, _s__object__name string) error {
 
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
 	if err != nil {
 		return nil
 	}
 
-	t.s_bucket_name = _s_bucket_name
-	t.s_object_name = _s_object_name
+	t.s__bucket__name = _s__bucket__name
+	t.s__object__name = _s__object__name
 
 	client := s3.NewFromConfig(cfg)
 
 	object__remove_input := &s3.DeleteObjectInput{
-		Bucket: &t.s_bucket_name,
-		Key:    &t.s_object_name,
+		Bucket: &t.s__bucket__name,
+		Key:    &t.s__object__name,
 	}
 
 	_, err = DeleteItem(context.TODO(), client, object__remove_input)
@@ -334,7 +415,7 @@ func (t *C__S3) Object__remove(_s_bucket_name, _s_object_name string) error {
 
 // Object 권한 변경
 // (sample) _s_ob_acl = "private"
-func (t *C__S3) Object__change(_s_bucket_name, _s_object_name, _s_object_acl string) error {
+func (t *C__S3) Object__change(_s__bucket__name, _s__object__name, _s__object__acl string) error {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
 	if err != nil {
 		return fmt.Errorf("configuration error - %v", err)
@@ -342,14 +423,14 @@ func (t *C__S3) Object__change(_s_bucket_name, _s_object_name, _s_object_acl str
 
 	client := s3.NewFromConfig(cfg)
 
-	t.s_bucket_name = _s_bucket_name
-	t.s_object_name = _s_object_name
-	t.s_object_acl = _s_object_acl
+	t.s__bucket__name = _s__bucket__name
+	t.s__object__name = _s__object__name
+	t.s__object__acl = _s__object__acl
 
 	object__change_input := &s3.PutObjectAclInput{
-		Bucket: &t.s_bucket_name,
-		Key:    &t.s_object_name,
-		ACL:    s3types.ObjectCannedACL(t.s_object_acl),
+		Bucket: &t.s__bucket__name,
+		Key:    &t.s__object__name,
+		ACL:    s3types.ObjectCannedACL(t.s__object__acl),
 	}
 	_, err = changeObjectAcl(context.TODO(), client, object__change_input)
 	if err != nil {
@@ -426,6 +507,27 @@ type S3PutObjectAclAPI interface {
 		optFns ...func(*s3.Options)) (*s3.PutObjectAclOutput, error)
 }
 
+//레코드 변경(추가,삭제) API 인터페이스
+type ROUTE53ChangeRecordAPI interface {
+	ChangeResourceRecordSets(ctx context.Context,
+		params *route53.ChangeResourceRecordSetsInput,
+		optFns ...func(*route53.Options)) (*route53.ChangeResourceRecordSetsOutput, error)
+}
+
+//도메인 등록 API 인터페이스
+type ROUTE53RegisterDomainAPI interface {
+	RegisterDomain(ctx context.Context,
+		params *route53domains.RegisterDomainInput,
+		optFns ...func(*route53domains.Options)) (*route53domains.RegisterDomainOutput, error)
+}
+
+// 도메인 삭제 API 인터페이스
+type ROUTE53DeleteDomainAPI interface {
+	DeleteDomain(ctx context.Context,
+		params *route53domains.DeleteDomainInput,
+		optFns ...func(*route53domains.Options)) (*route53domains.DeleteDomainOutput, error)
+}
+
 // <------------------------------------------------------------------------->
 
 // AWS API 함수 모음
@@ -474,6 +576,21 @@ func DeleteItem(c context.Context, api S3DeleteObjectAPI, input *s3.DeleteObject
 // API Object 권한 변경 함수
 func changeObjectAcl(c context.Context, api S3PutObjectAclAPI, input *s3.PutObjectAclInput) (*s3.PutObjectAclOutput, error) {
 	return api.PutObjectAcl(c, input)
+}
+
+//레코드 변경(추가,삭제) 함수
+func changeRecord(c context.Context, api ROUTE53ChangeRecordAPI, input *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
+	return api.ChangeResourceRecordSets(c, input)
+}
+
+//도메인 등록 함수
+func createDomain(c context.Context, api ROUTE53RegisterDomainAPI, input *route53domains.RegisterDomainInput) (*route53domains.RegisterDomainOutput, error) {
+	return api.RegisterDomain(c, input)
+}
+
+// 도메인 삭제 함수
+func removeDomain(c context.Context, api ROUTE53DeleteDomainAPI, input *route53domains.DeleteDomainInput) (*route53domains.DeleteDomainOutput, error) {
+	return api.DeleteDomain(c, input)
 }
 
 // <------------------------------------------------------------------------->
