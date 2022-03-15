@@ -9,42 +9,45 @@ import (
 )
 
 type C_sns struct {
-	s_title   string
-	s_region  string
-	s_acid    string
-	s_ackey   string
-	s_session string
-	s_number  string
-	cfg       aws.Config
+	sTitle   string
+	sRegion  string
+	sAcid    string
+	sAckey   string
+	sSession string
+	sTopic   string
+	cfg      aws.Config
 }
 
-func Send_Alram(_s_acid, _s_ackey, _s_session, _s_region, _s_message, _s_number string) (string, error) {
-	cSMS := New_C_monitor()
-	cSMS.Init(_s_acid, _s_ackey, _s_session, _s_region)
-	return cSMS.Send(_s_message, _s_number)
+// 문자 발송 함수
+func Send_sns(_sAcid, _sAckey, _sSession, _sRegion, _sMessage, _sTopic string) (string, error) {
+	cSMS := New_C_sns()
+	cSMS.Init(_sAcid, _sAckey, _sSession, _sRegion)
+	return cSMS.Send(_sMessage, _sTopic)
 }
 
-func New_C_monitor() *C_sns {
+// --------------------------------------------------------------------------------------
+func New_C_sns() *C_sns {
 	c := &C_sns{}
 	return c
 }
 
-func (t *C_sns) Init(_s_acid, _s_ackey, _s_session, _s_region string) {
+func (t *C_sns) Init(_sAcid, _sAckey, _sSession, _sRegion string) {
 
+	// aws config(id,passwd)
 	t.cfg = aws.Config{
-		Region:      _s_region,
-		Credentials: credentials.NewStaticCredentialsProvider(_s_acid, _s_ackey, _s_session),
+		Region:      _sRegion,
+		Credentials: credentials.NewStaticCredentialsProvider(_sAcid, _sAckey, _sSession),
 	}
 }
 
-func (t *C_sns) Send(_s_message, _s_number string) (string, error) {
+func (t *C_sns) Send(_sMessage, _sTopic string) (string, error) {
 
 	client := sns.NewFromConfig(t.cfg)
 
 	result, err := client.Publish(context.TODO(), &sns.PublishInput{
-		Subject:     aws.String("Server Err"),
-		Message:     &_s_message,
-		PhoneNumber: &_s_number,
+		Subject:  aws.String("Server Err"),
+		Message:  &_sMessage,
+		TopicArn: &_sTopic,
 	})
 
 	if err != nil {
