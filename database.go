@@ -2,35 +2,31 @@ package main
 
 import (
 	"database/sql"
-	"time"
+	"fmt"
+	"log"
 
-	"github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 type C_database struct {
-	s_dbid   string
-	s_dbpwd  string
-	s_addr   string
-	s_dbname string
+	sDBtype string
+	sDBid   string
+	sDBpwd  string
+	sAddr   string
+	sDBname string
 }
 
-func (t *C_database) GetConnector(_s_dbid, _s_dbpwd, _s_addr, _s_dbname string) *sql.DB {
-	cfg := mysql.Config{
-		User:                 _s_dbid,
-		Passwd:               _s_dbpwd,
-		Net:                  "tcp",
-		Addr:                 _s_addr,
-		Collation:            "utf8mb4_general_ci",
-		Loc:                  time.UTC,
-		MaxAllowedPacket:     4 << 20.,
-		AllowNativePasswords: true,
-		CheckConnLiveness:    true,
-		DBName:               _s_dbname,
-	}
-	connector, err := mysql.NewConnector(&cfg)
+func ConnectDB() {
+	db, err := sql.Open("mysql", "root:devtools1!@tcp(3.34.1.156:3306)/monitor")
 	if err != nil {
-		panic(err)
+		log.Fatal("database open error:", err)
 	}
-	db := sql.OpenDB(connector)
-	return db
+	defer db.Close()
+
+	var name string
+	err = db.QueryRow("SELECT url FROM target WHERE id = 1").Scan(&name)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(name)
 }
