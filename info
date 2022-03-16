@@ -30,6 +30,6 @@
 
 2. Run_CheckUrl
   2.1 checkUrl
-  2.2 New_C_checkUrl
+  2.2 checkUrl_multi
 
-3. Main_CheckTarget (작성중)
+3. GetUrl
