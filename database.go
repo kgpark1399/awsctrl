@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 func Run_GetUrls() {
@@ -13,7 +14,7 @@ func Run_GetUrls() {
 
 func (t *C_monitor) GetUrls() {
 	var website C_monitor
-	db, err := sql.Open("mysql", "root:devtools1!@tcp(ip:port)/monitor")
+	db, err := sql.Open("mysql", "root:devtools1!@tcp(3.34.1.156:3306)/monitor")
 	if err != nil {
 		log.Fatal(err)
 	}
