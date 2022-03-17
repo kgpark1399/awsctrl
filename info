@@ -1,35 +1,39 @@
 
 [필요 기능 정의]
 
-1. 알림 발송 기능
-2. 상태 체크 기능
-3. DB 연동(target 정보)
+1. 알림 발송 기능 (AWS SNS)
+2. DB URL 데이터 호출 및 반환
+3. DB URL STATUS 데이터 호출 및 반환
+4. Target URL HTTP STATUS 체크 기능
+5. DB URL STATUS 컬럼 데이터 체크 기능
 
  
 [프로세스]
 
-1. 타겟의 http 상태를 체크한다 (1분에 1회)
-  1.1 http status code 200 ~ 299 (정상)
-  1.2 그외 코드 및 접속 오류 (장애)
+1. Target url http check
+  1.1 체크 대상은 DB의 URL 컬럼을 호출하여 체크한다.
+  1.2 HTTP 200 ~ 299 > DB STATUS 컬럼 0 변경
+  1.3 접속 오류 및 그외 STATUS CODE > DB STATUS 컬럼 1 변경
 
-2. 타겟의 http 상태가
-  2.1 정상의 경우, status = green
-  2.2 장애의 경우, status = red
-
-3.메인 모니터링
-  3.1 호스트 별 상태를 체크한다. (100초 1회)
-  3.2 상태가 red 인 호스트가 발견되면 aws sns 알림을 발송한다.
-  3.3 발송 메세지의 red 호스트의 정보를 message 내용에 추가한다.
+2. DB status 컬럼 모니터링
+  2.1 DB Monitor.target status 데이터가 0이면 정상
+  2.2 DB Monitor.target status 데이터가 1이면 장애
+      >알림 메일 발송(SMS, Mail)
 
 
 [함수 정의]
-1. Send_sns
-  1.1 Send
-  1.2 Init
-  1.3 New_C_sns
+1. 알림 발송 함수
+  1.1 Send    (알림 발송 기능)
+  1.2 Init    (aws config 정보 입력)
+  1.3 New_C_sns (구조체 out)
+  1.4 Send_sns (알림 발송 기능 실행)
 
-2. Run_CheckUrl
-  2.1 checkUrl
-  2.2 checkUrl_multi
+2. URL 체크 기능
+  2.1 GetUrls  (DB URL Target 컬럼 데이터 호출)
+  2.2 CheckUrl (HTTP Status 체크)
+  2.3 Run_ChkeckUrl  (DB Target 데이터 대상으로 HTTP Status 체크)
 
-3. GetUrl
+3. DB status 데이터 체크
+  3.1 Status (DB URL stats 컬럼 데이터 호출)
+  3.2 CheckStatus (status 데이터 체크 기능)
+  3.3 Run_CheckStatus (DB status 데이터 대상으로 상태 값 체크 후 알림 발송)
