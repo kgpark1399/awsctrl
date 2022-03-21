@@ -8,13 +8,22 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// DB URL 정보 호출 및 반환
-func (t *C_monitor) GetUrls() (result []string) {
-	var website C_monitor
+// DB Connection 설정
+func DB_cnn() (db *sql.DB) {
+
 	db, err := sql.Open("mysql", "root:devtools1!@tcp(3.34.1.156:3306)/monitor")
 	if err != nil {
 		log.Fatal(err)
 	}
+	return db
+}
+
+// DB URL 정보 호출 및 반환
+func (t *C_monitor) GetUrls() (result []string) {
+	var website C_monitor
+	var websites []C_monitor
+
+	db := DB_cnn()
 	defer db.Close()
 
 	rows, err := db.Query("SELECT url,status FROM target")
@@ -22,8 +31,6 @@ func (t *C_monitor) GetUrls() (result []string) {
 	if err != nil {
 		panic(err.Error())
 	}
-
-	var websites []C_monitor
 
 	for rows.Next() {
 		if err := rows.Scan(&website.sUrl, &website.iStatus); err != nil {
@@ -44,10 +51,7 @@ func (t *C_monitor) GetUrls() (result []string) {
 
 // DB status 컬럼 데이터 변경 (check 실패 시)
 func (t *C_monitor) ChagneStatus(_sUrl string) {
-	db, err := sql.Open("mysql", "root:devtools1!@tcp(3.34.1.156:3306)/monitor")
-	if err != nil {
-		log.Fatal(err)
-	}
+	db := DB_cnn()
 	defer db.Close()
 
 	stmt, err := db.Prepare("UPDATE target SET status=? WHERE url=?")
@@ -66,21 +70,16 @@ func (t *C_monitor) ChagneStatus(_sUrl string) {
 // DB status 컬럼 데이터 조회
 func (t *C_monitor) GetStatus() (result []int) {
 	var getstatus C_monitor
+	var groupstatus []C_monitor
 
-	db, err := sql.Open("mysql", "root:devtools1!@tcp(3.34.1.156:3306)/monitor")
-	if err != nil {
-		log.Fatal(err)
-	}
+	db := DB_cnn()
 	defer db.Close()
-
 	// 쿼리 대상
 	rows, err := db.Query("SELECT url,status FROM target")
 
 	if err != nil {
 		panic(err.Error())
 	}
-
-	var groupstatus []C_monitor
 
 	// 쿼리 조회 후 변수 저장
 	for rows.Next() {
@@ -102,15 +101,8 @@ func (t *C_monitor) GetStatus() (result []int) {
 }
 
 func (t *C_monitor) CreateUrl(_sName, _sUrl string, _iStatus int) {
-	db, err := sql.Open("mysql", "root:devtools1!@tcp(3.34.1.156:3306)/monitor")
-	if err != nil {
-		log.Fatal(err)
-	}
+	db := DB_cnn()
 	defer db.Close()
-
-	if err != nil {
-		panic(err.Error())
-	}
 
 	// INSERT 문 실행
 	result, err := db.Exec("INSERT INTO target (name,url,status) VALUES (?, ?, ?)", _sName, _sUrl, _iStatus)
@@ -124,4 +116,33 @@ func (t *C_monitor) CreateUrl(_sName, _sUrl string, _iStatus int) {
 		fmt.Println("1 row inserted.")
 	}
 	fmt.Println(err)
+}
+
+func (t *C_monitor) GetUrls_Err() (result []string) {
+	var website C_monitor
+	var websites []C_monitor
+
+	db := DB_cnn()
+	defer db.Close()
+
+	rows, err := db.Query("SELECT url FROM target WHERE status=1")
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	for rows.Next() {
+		if err := rows.Scan(&website.sUrl); err != nil {
+			panic(err.Error())
+		}
+
+		websites = append(websites, website)
+	}
+
+	for _, target := range websites {
+		t.sUrls = append(t.sUrls, target.sUrl)
+	}
+
+	result = t.sUrls
+	return result
 }
