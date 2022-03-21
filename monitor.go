@@ -67,11 +67,11 @@ func (t *C_monitor) CheckUrl(_sUrl string) {
 
 	// 에러 발생 또는 상태코드가 400과 같거나 큰 경우 에러처리
 	if err != nil || resp.StatusCode >= 400 {
-		fmt.Println("STATUS : ERR", "URL :", _sUrl)
+		fmt.Println("URL :", _sUrl, ", STATUS : ERR ")
 		t.ChagneStatus(_sUrl)
 
 	} else {
-		fmt.Println("STATUS :", resp.Status, "URL :", _sUrl)
+		fmt.Println("URL :", _sUrl, ", STATUS :", resp.Status)
 
 	}
 }
@@ -83,7 +83,16 @@ func (t *C_monitor) CheckStatus(_sStatus int) {
 		fmt.Println("OK")
 
 	} else {
-		fmt.Println("err")
+
+		var target []string
+		target = t.GetUrls_Err()
+
+		for _, sTarget := range target {
+			fmt.Println("URL : ", sTarget, ",  HTTP STATUS : ERROR")
+			s_target := "URL :" + sTarget + "Error"
+			Send_sns(s_target)
+
+		}
 
 	}
 }
