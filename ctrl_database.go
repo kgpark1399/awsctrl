@@ -1,148 +1,64 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
-	"log"
+	"context"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 )
 
-// DB Connection 설정
-func DB_cnn() (db *sql.DB) {
-
-	db, err := sql.Open("mysql", "root:devtools1!@tcp(3.34.1.156:3306)/monitor")
-	if err != nil {
-		log.Fatal(err)
-	}
-	return db
+type C_sns struct {
+	sTitle   string
+	sRegion  string
+	sAcid    string
+	sAckey   string
+	sSession string
+	sTopic   string
+	cfg      aws.Config
 }
 
-// DB URL 정보 호출 및 반환
-func (t *C_monitor) GetUrls() (result []string) {
-	var website C_monitor
-	var websites []C_monitor
-
-	db := DB_cnn()
-	defer db.Close()
-
-	rows, err := db.Query("SELECT url,status FROM target")
-
-	if err != nil {
-		panic(err.Error())
-	}
-
-	for rows.Next() {
-		if err := rows.Scan(&website.sUrl, &website.iStatus); err != nil {
-			panic(err.Error())
-		}
-
-		websites = append(websites, website)
-	}
-
-	for _, target := range websites {
-		t.sUrls = append(t.sUrls, target.sUrl)
-	}
-
-	result = t.sUrls
-
-	return result
+// 문자 발송 함수
+func Send_sns(_sMessage string) (string, error) {
+	cSMS := New_C_sns()
+	cSMS.Init("id", "key", "session", "us-east-1")
+	return cSMS.Send(_sMessage, "arn:")
 }
 
-// DB status 컬럼 데이터 변경 (check 실패 시)
-func (t *C_monitor) ChagneStatus(_sUrl string) {
-	db := DB_cnn()
-	defer db.Close()
+// 문자 발송 함수
+// func Send_sns(_sAcid, _sAckey, _sSession, _sRegion, _sMessage, _sTopic string) (string, error) {
+// 	cSMS := New_C_sns()
+// 	cSMS.Init(_sAcid, _sAckey, _sSession, _sRegion)
+// 	return cSMS.Send(_sMessage, _sTopic)
+// }
 
-	stmt, err := db.Prepare("UPDATE target SET status=? WHERE url=?")
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer stmt.Close()
+// --------------------------------------------------------------------------------------
+func New_C_sns() *C_sns {
+	c := &C_sns{}
+	return c
+}
 
-	// Prepared Statement 실행
-	_, err = stmt.Exec(1, _sUrl) //Placeholder 파라미터 순서대로 전달
-	if err != nil {
-		fmt.Println(err)
+func (t *C_sns) Init(_sAcid, _sAckey, _sSession, _sRegion string) {
+
+	// aws config(id,passwd)
+	t.cfg = aws.Config{
+		Region:      _sRegion,
+		Credentials: credentials.NewStaticCredentialsProvider(_sAcid, _sAckey, _sSession),
 	}
 }
 
-// DB status 컬럼 데이터 조회
-func (t *C_monitor) GetStatus() (result []int) {
-	var getstatus C_monitor
-	var groupstatus []C_monitor
+func (t *C_sns) Send(_sMessage, _sTopic string) (string, error) {
 
-	db := DB_cnn()
-	defer db.Close()
-	// 쿼리 대상
-	rows, err := db.Query("SELECT url,status FROM target")
+	client := sns.NewFromConfig(t.cfg)
 
-	if err != nil {
-		panic(err.Error())
-	}
-
-	// 쿼리 조회 후 변수 저장
-	for rows.Next() {
-		if err := rows.Scan(&getstatus.sUrl, &getstatus.iStatus); err != nil {
-			panic(err.Error())
-		}
-
-		groupstatus = append(groupstatus, getstatus)
-	}
-
-	// 쿼리 데이터 중 상태 데이터만 추출하여 배열 저장
-	for _, target_s := range groupstatus {
-		t.sStatusGrp = append(t.sStatusGrp, target_s.iStatus)
-	}
-
-	// 결과 데이터 반환
-	result = t.sStatusGrp
-	return result
-}
-
-func (t *C_monitor) CreateUrl(_sName, _sUrl string, _iStatus int) {
-	db := DB_cnn()
-	defer db.Close()
-
-	// INSERT 문 실행
-	result, err := db.Exec("INSERT INTO target (name,url,status) VALUES (?, ?, ?)", _sName, _sUrl, _iStatus)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	// sql.Result.RowsAffected() 체크
-	n, err := result.RowsAffected()
-	if n == 1 {
-		fmt.Println("1 row inserted.")
-	}
-	fmt.Println(err)
-}
-
-func (t *C_monitor) GetUrls_Err() (result []string) {
-	var website C_monitor
-	var websites []C_monitor
-
-	db := DB_cnn()
-	defer db.Close()
-
-	rows, err := db.Query("SELECT url FROM target WHERE status=1")
+	result, err := client.Publish(context.TODO(), &sns.PublishInput{
+		Subject:  aws.String("Server Err"),
+		Message:  &_sMessage,
+		TopicArn: &_sTopic,
+	})
 
 	if err != nil {
-		panic(err.Error())
+		return "", err
 	}
-
-	for rows.Next() {
-		if err := rows.Scan(&website.sUrl); err != nil {
-			panic(err.Error())
-		}
-
-		websites = append(websites, website)
-	}
-
-	for _, target := range websites {
-		t.sUrls = append(t.sUrls, target.sUrl)
-	}
-
-	result = t.sUrls
-	return result
+	return *result.MessageId, nil
 }
