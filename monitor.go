@@ -8,91 +8,86 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type C_monitor struct {
-	sId   string
-	sUrl  string
-	SName string
+// URL HTTP 상태 체크 실행
 
-	iStatus int
+func Run_check__url(_s_db__id, _s_db__pwd, _s_db__hostname, _s_db__name string) {
+	t := C_monitor{}
+	t.check__url(_s_db__id, _s_db__pwd, _s_db__hostname, _s_db__name)
+}
 
-	sUrls      []string
-	sStatusGrp []int
+func Run_check__status(_s_db__id, _s_db__pwd, _s_db__hostname, _s_db__name string) {
+	t := C_monitor{}
+	t.check__status(_s_db__id, _s_db__pwd, _s_db__hostname, _s_db__name)
 }
 
 // URL HTTP 상태 체크 실행
-func Run_ChkeckUrl() {
+func (t *C_monitor) check__url(_s_db__id, _s_db__pwd, _s_db__hostname, _s_db__name string) {
 
-	ticker := time.NewTicker(time.Minute * 1)
+	// DB 접속
+	t.DB_conn(_s_db__id, _s_db__pwd, _s_db__hostname, _s_db__name)
+
+	// DB에서 모니터링 대상 URL 호출
+	target := t.GetUrls()
+
+	// 반복 시간 설정
+	ticker := time.NewTicker(time.Second * 3)
 	go func() {
-		for t := range ticker.C {
-			_t := C_monitor{}
-			target := _t.GetUrls()
+		for time := range ticker.C {
+
+			// 모니터링 대상 URL string 으로 변경 후 http 상태 조회
 			for _, url := range target {
-				_t.CheckUrl(url)
-				fmt.Println(t)
+				resp, err := http.Get(url)
+				if err != nil || resp.StatusCode >= 400 {
+					// http status 오류의 경우 DB status 값을 0(false)로 변경
+					fmt.Println("URL :", url, ", STATUS : ERR ")
+					t.Chagne_status__false(url)
+				} else {
+					// http status 정상의 경우 DB status 값을 0(false)로 변경
+					fmt.Println("URL :", url, ", STATUS :", resp.Status)
+					t.Chagne_status__true(url)
+
+				}
+				// 로그 시간 출력
+				fmt.Println(time)
 			}
 		}
 	}()
-	time.Sleep(time.Minute * 10)
+	time.Sleep(time.Second * 20)
 	ticker.Stop()
-	fmt.Println("Ticker stopped")
+	fmt.Println("monitor check stopped")
+	t.DB_close()
 }
 
 // DB URL status 값 체크 실행
-func Run_CheckStatus() {
+func (t *C_monitor) check__status(_s_db__id, _s_db__pwd, _s_db__hostname, _s_db__name string) {
+	t.DB_conn(_s_db__id, _s_db__pwd, _s_db__hostname, _s_db__name)
 
-	ticker := time.NewTicker(time.Minute * 3)
+	ticker := time.NewTicker(time.Second * 10)
 	go func() {
-		for t := range ticker.C {
-			_t := C_monitor{}
-			target := _t.GetStatus()
+		for time := range ticker.C {
+
+			// DB status Err 상태 URL 데이터 호출
+			var arrs_target []string
+			arrs_target = t.GetUrls_Err()
+
+			target := t.GetStatus()
 			for _, status := range target {
-				_t.CheckStatus(status)
-				fmt.Println(t)
+				if status == 0 {
+					fmt.Print()
+				} else {
+					for _, s_target := range arrs_target {
+						fmt.Println("URL : ", s_target, ",  HTTP STATUS : ERROR", ", Time :", time)
+						s_target := "URL :" + s_target + "Error"
+						Send_sns(s_target)
+					}
+
+				}
 			}
 		}
 	}()
-	time.Sleep(time.Minute * 10)
+	time.Sleep(time.Second * 20)
 	ticker.Stop()
 	fmt.Println("Ticker stopped")
+	t.DB_close()
 
-}
-
-// ---------------------------------------------------------------------- //
-
-// URL HTTP 상태 체크 기능
-func (t *C_monitor) CheckUrl(_sUrl string) {
-	// url get 요청
-	resp, err := http.Get(_sUrl)
-
-	// 에러 발생 또는 상태코드가 400과 같거나 큰 경우 에러처리
-	if err != nil || resp.StatusCode >= 400 {
-		fmt.Println("URL :", _sUrl, ", STATUS : ERR ")
-		t.ChagneStatus(_sUrl)
-
-	} else {
-		fmt.Println("URL :", _sUrl, ", STATUS :", resp.Status)
-
-	}
-}
-
-// DB URL status 값 체크 기능
-func (t *C_monitor) CheckStatus(_sStatus int) {
-
-	if _sStatus == 0 {
-		fmt.Println("OK")
-
-	} else {
-
-		var target []string
-		target = t.GetUrls_Err()
-
-		for _, sTarget := range target {
-			fmt.Println("URL : ", sTarget, ",  HTTP STATUS : ERROR")
-			s_target := "URL :" + sTarget + "Error"
-			Send_sns(s_target)
-
-		}
-
-	}
 }
