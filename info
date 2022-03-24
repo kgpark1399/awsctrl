@@ -5,35 +5,47 @@
 2. DB URL 데이터 호출 및 반환
 3. DB URL STATUS 데이터 호출 및 반환
 4. Target URL HTTP STATUS 체크 기능
-5. DB URL STATUS 컬럼 데이터 체크 기능
 
  
 [프로세스]
 
 1. Target url http check
   1.1 체크 대상은 DB의 URL 컬럼을 호출하여 체크한다.
-  1.2 HTTP 200 ~ 299 > DB STATUS 컬럼 0 변경
-  1.3 접속 오류 및 그외 STATUS CODE > DB STATUS 컬럼 1 변경
+  1.2 HTTP 200 ~ 299 > DB STATUS true 
+  1.3 접속 오류 및 그외 STATUS CODE > DB STATUS false
 
 2. DB status 컬럼 모니터링
-  2.1 DB Monitor.target status 데이터가 0이면 정상
-  2.2 DB Monitor.target status 데이터가 1이면 장애
+  2.1 DB Monitor.target status true 정상
+  2.2 DB Monitor.target status false 장애
       >알림 메일 발송(SMS, Mail)
 
 
-[함수 정의]
-1. 알림 발송 함수
-  1.1 Send    (알림 발송 기능)
-  1.2 Init    (aws config 정보 입력)
-  1.3 New_C_sns (구조체 out)
-  1.4 Send_sns (알림 발송 기능 실행)
+[Controller]
 
-2. URL 체크 기능
-  2.1 GetUrls  (DB URL Target 컬럼 데이터 호출)
-  2.2 CheckUrl (HTTP Status 체크)
-  2.3 Run_ChkeckUrl  (DB Target 데이터 대상으로 HTTP Status 체크)
+1. C_Monitor
+ 1.1 Run_check_url
+ 1.2 Run_Check_status
 
-3. DB status 데이터 체크
-  3.1 Status (DB URL stats 컬럼 데이터 호출)
-  3.2 CheckStatus (status 데이터 체크 기능)
-  3.3 Run_CheckStatus (DB status 데이터 대상으로 상태 값 체크 후 알림 발송)
+2. C_Monitor_db
+ 2.1 Get__status
+ 2.2 Get__urls
+ 2.3 Change_status__false
+ 2.4 Change_status__true
+ 2.5 Create__url
+ 2.6 Create__contact
+ 
+3. C_database
+  3.1 Init_db
+  3.2 DB_conn
+  3.3 DB_close
+  
+4. C_sns
+  4.1 Send
+  4.2 Init__sns
+  4.3 New_C_SNS
+  4.4 c_sns
+  
+5. C_monitor_log
+ 5.1 Init__log
+ 5.2 Set_monitorlog
+
