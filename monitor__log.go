@@ -1,4 +1,4 @@
-package main
+package monitor
 
 import (
 	"fmt"
@@ -7,14 +7,17 @@ import (
 	"os"
 )
 
-type C_monitor_log struct {
+type C_monitor__log struct {
 	s_file__name string
-	s_file__path string
 }
 
-func (t *C_monitor_log) Set_monitorlog(_s_file__path, _s_file__name string) os.File {
+func (t *C_monitor__log) Set_monitorlog(_s_file__name string) (os.File, error) {
 
-	t.Init__log(_s_file__path, _s_file__name)
+	_bool, err := t.Init__log()
+	if err != nil {
+		fmt.Println(_bool, err)
+	}
+
 	file, err := os.OpenFile(_s_file__name, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		fmt.Println(err)
@@ -23,11 +26,14 @@ func (t *C_monitor_log) Set_monitorlog(_s_file__path, _s_file__name string) os.F
 	multiWriter := io.MultiWriter(file, os.Stdout)
 	log.SetOutput(multiWriter)
 
-	return *file
+	return *file, nil
 }
 
-func (t *C_monitor_log) Init__log(_s_file__path, _s_file__name string) string {
+func (t *C_monitor__log) Init__log() (bool, error) {
 
-	file := _s_file__path + _s_file__name
-	return file
+	var err error
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
