@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,7 +20,8 @@ type C_monitor struct {
 	s_monitor__name   string
 	s_monitor__status string
 
-	n_monitor__rate int
+	n_monitor__rate         int
+	n_monitor__expired_days int
 
 	arrs_monitor__urls       []string
 	arrs_monitor__status_grp []string
@@ -141,6 +143,66 @@ func (t *C_monitor) Monitor__sendAlert(_s_message string) error {
 		err = Send_sns(_s_message, _number)
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// 인증서 활성화 체크
+func (t *C_monitor) Check_ssl() error {
+	_, err := tls.Dial("tcp", "github.com:443", nil)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	return nil
+}
+
+// 인증서 기간 만료 체크
+func (t *C_monitor) Check_ssl_date(_n_monitor__expired_day int) error {
+
+	// DB의 ssl 체크 대상 url 호출
+	urls, err := t.Get__ssl_urls()
+	if err != nil {
+		fmt.Print(err)
+	}
+
+	// URL 대상 arrs > string 변환 후 인증서 기간 체크
+	for _, url := range urls {
+		host := url + ":" + "443"
+		conn, err := tls.Dial("tcp", host, nil)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		defer conn.Close()
+
+		err = conn.VerifyHostname(url)
+		if err != nil {
+			fmt.Print(err)
+			fmt.Print(url)
+			return err
+		}
+
+		// 인증서 만료 날짜 불러오기
+		expired := conn.ConnectionState().PeerCertificates[0].NotAfter
+
+		// 만료 기간 설정 후 저장 (day 기준)
+		expired_date := expired.AddDate(0, 0, _n_monitor__expired_day)
+
+		// 오늘 날짜
+		today := time.Now()
+
+		// SSL 인증서 만료 한달 전 = false
+		checkdate := expired_date.After(today)
+		if !checkdate {
+			s_expired_date := string(_n_monitor__expired_day)
+			message := "URL :" + url + "인증서 만료" + s_expired_date + "일 전입니다."
+
+			fmt.Print(message, expired)
+			t.Monitor__sendAlert(message)
+		} else {
+			fmt.Print("ok")
 		}
 	}
 	return nil
