@@ -105,6 +105,43 @@ func (t *C_monitor__db) Get__urls() (result []string, err error) {
 
 }
 
+// DB URL 정보 호출 및 반환
+func (t *C_monitor__db) Get__ssl_urls() (result []string, err error) {
+
+	_bool, err := t.Init__monitor_db()
+	if err != nil {
+		fmt.Println(_bool, err)
+	}
+
+	var website C_monitor
+	var websites []C_monitor
+
+	// DB URL STATUS 데이터 쿼리
+	rows, err := t.db_conn.Query("SELECT url FROM target_ssl")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// URL, STATUS 데이터 각각 변수에 입력
+	for rows.Next() {
+		if err := rows.Scan(&website.s_monitor__url); err != nil {
+			fmt.Print(err)
+		}
+
+		websites = append(websites, website)
+	}
+
+	_t := C_monitor{}
+	for _, target := range websites {
+		_t.arrs_monitor__urls = append(_t.arrs_monitor__urls, target.s_monitor__url)
+	}
+
+	// 결과 반환
+	result = _t.arrs_monitor__urls
+	return result, nil
+
+}
+
 // DB 관리자 정보 가져오기
 func (t *C_monitor__db) Get__contact_info() (mail, number []string, err error) {
 
