@@ -1,10 +1,11 @@
 package monitor
 
 import (
-	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -16,15 +17,15 @@ type C_monitor struct {
 	C_monitor__db
 	C_monitor__log
 
-	s_monitor__url    string
-	s_monitor__name   string
-	s_monitor__status string
+	s_monitor__url  string
+	s_monitor__name string
+	s_monitor__data string
 
 	n_monitor__rate         int
 	n_monitor__expired_days int
 
-	arrs_monitor__urls       []string
-	arrs_monitor__status_grp []string
+	arrs_monitor__urls []string
+	arrs_monitor__data []string
 }
 
 func (t *C_monitor) Init_check() (bool, error) {
@@ -37,7 +38,7 @@ func (t *C_monitor) Init_check() (bool, error) {
 }
 
 // URL HTTP 상태 체크 실행
-func (t *C_monitor) Monitor__checkUrl(_n_monitor__rate int) error {
+func (t *C_monitor) Run__Monitor(_n_monitor__rate int) error {
 
 	_, err := t.Init_check()
 	if err != nil {
@@ -45,7 +46,7 @@ func (t *C_monitor) Monitor__checkUrl(_n_monitor__rate int) error {
 	}
 
 	// DB에서 모니터링 대상 URL 호출
-	target, err := t.Get__urls()
+	target_url, target_data, err := t.Get__urls()
 	if err != nil {
 		return err
 	}
@@ -55,60 +56,42 @@ func (t *C_monitor) Monitor__checkUrl(_n_monitor__rate int) error {
 
 	for range ticker.C {
 
-		// 모니터링 대상 URL string 으로 변경 후 http 상태 조회
-		for _, url := range target {
+		// 모니터링 대상 URL arr_string > string 변환
+		for i, url := range target_url {
 			resp, err := http.Get(url)
+
+			// HTTP 접속 오류 및 Status code 400 이상이면 오류
 			if err != nil || resp.StatusCode >= 400 {
-				// http status 오류의 경우 DB status 값을 0(false)로 변경
-				log.Println("URL :", url, ", STATUS : ERR ")
-				err = t.Change_status__false(url)
-				if err != nil {
-					return err
-				}
-			} else {
-				// http status 정상의 경우 DB status 값을 0(false)로 변경
-				log.Println("URL :", url, ", STATUS :", resp.Status)
-				err = t.Change_status__true(url)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
+				message := "URL :" + url + "STATUS : ERR"
 
-// DB URL status 값 체크 및 알림 발송
-func (t *C_monitor) Monitor__checkStatus(_n_monitor__rate int) error {
+				// 장애 알림 발송(Mail,SMS)
+				t.Run__alert(message)
 
-	_, err := t.Init_check()
-	if err != nil {
-		return err
-	}
-
-	// 반복시간 설정
-	ticker := time.NewTicker(time.Second * time.Duration(_n_monitor__rate))
-
-	for range ticker.C {
-
-		// DB url, status 값 호출 및 string 변환
-		url, status, err := t.Get__status()
-		if err != nil {
-			return err
-		}
-
-		for i, _status := range status {
-			// status 값 체크하여 false의 경우 알림 발송
-			if _status == "true" {
-				fmt.Print()
-			} else {
-				// 에러 메시지 조합
-				message := "SERVER Error Alert!\n" + "URL :" + url[i] + "\n" + "SERVER STATUS :" + _status
-				err = t.Monitor__sendAlert(message)
-				if err != nil {
-					return err
-				}
+				//로그 찍기
 				log.Println(message)
+
+			} else {
+				// HTTP 접속 정상의 경우, 로그 찍기
+				log.Println("URL :", url, ", STATUS :", resp.Status)
+
+				// URL 대상 HTTP Body 값 호출
+				body, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					return err
+				}
+				// arr_string > string 변환
+				s_body := string(body)
+
+				//string 변환 된 HTTP Body의 불필요 줄바꿈 제거
+				_body := strings.TrimRight(s_body, "\r\n")
+
+				// DB의 URL Data와 HTTP Body 값 문자열 비교
+				if strings.EqualFold(_body, target_data[i]) {
+					fmt.Print()
+				} else {
+					message := "URL :" + url + ", String Compare Err"
+					t.Run__alert(message)
+				}
 			}
 		}
 	}
@@ -116,7 +99,7 @@ func (t *C_monitor) Monitor__checkStatus(_n_monitor__rate int) error {
 }
 
 // 메일 및 SMS 발송
-func (t *C_monitor) Monitor__sendAlert(_s_message string) error {
+func (t *C_monitor) Run__alert(_s_message string) error {
 	var err error
 
 	_, err = t.Init_check()
@@ -143,66 +126,6 @@ func (t *C_monitor) Monitor__sendAlert(_s_message string) error {
 		err = Send_sns(_s_message, _number)
 		if err != nil {
 			return err
-		}
-	}
-	return nil
-}
-
-// 인증서 활성화 체크
-func (t *C_monitor) Check_ssl() error {
-	_, err := tls.Dial("tcp", "github.com:443", nil)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	return nil
-}
-
-// 인증서 기간 만료 체크
-func (t *C_monitor) Check_ssl_date(_n_monitor__expired_day int) error {
-
-	// DB의 ssl 체크 대상 url 호출
-	urls, err := t.Get__ssl_urls()
-	if err != nil {
-		fmt.Print(err)
-	}
-
-	// URL 대상 arrs > string 변환 후 인증서 기간 체크
-	for _, url := range urls {
-		host := url + ":" + "443"
-		conn, err := tls.Dial("tcp", host, nil)
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-		defer conn.Close()
-
-		err = conn.VerifyHostname(url)
-		if err != nil {
-			fmt.Print(err)
-			fmt.Print(url)
-			return err
-		}
-
-		// 인증서 만료 날짜 불러오기
-		expired := conn.ConnectionState().PeerCertificates[0].NotAfter
-
-		// 만료 기간 설정 후 저장 (day 기준)
-		expired_date := expired.AddDate(0, 0, _n_monitor__expired_day)
-
-		// 오늘 날짜
-		today := time.Now()
-
-		// SSL 인증서 만료 한달 전 = false
-		checkdate := expired_date.After(today)
-		if !checkdate {
-			s_expired_date := string(_n_monitor__expired_day)
-			message := "URL :" + url + "인증서 만료" + s_expired_date + "일 전입니다."
-
-			fmt.Print(message, expired)
-			t.Monitor__sendAlert(message)
-		} else {
-			fmt.Print("ok")
 		}
 	}
 	return nil
