@@ -21,11 +21,13 @@ type C_monitor struct {
 	s_monitor__name string
 	s_monitor__data string
 
+	n_monitor__alert_count  int
 	n_monitor__rate         int
 	n_monitor__expired_days int
 
-	arrs_monitor__urls []string
-	arrs_monitor__data []string
+	arrs_monitor__urls  []string
+	arrs_monitor__data  []string
+	arrn_monitor__alert []int
 }
 
 func (t *C_monitor) Init_check() (bool, error) {
@@ -46,7 +48,7 @@ func (t *C_monitor) Run__Monitor(_n_monitor__rate int) error {
 	}
 
 	// DB에서 모니터링 대상 URL 호출
-	target_url, target_data, err := t.Get__urls()
+	target_url, target_data, target_alert, err := t.Get__urls()
 	if err != nil {
 		return err
 	}
@@ -62,16 +64,22 @@ func (t *C_monitor) Run__Monitor(_n_monitor__rate int) error {
 
 			// HTTP 접속 오류 및 Status code 400 이상이면 오류
 			if err != nil || resp.StatusCode >= 400 {
-				message := "URL :" + url + "STATUS : ERR"
+				message := "URL :" + url + ", STATUS : ERR"
 
-				// 장애 알림 발송(Mail,SMS)
-				t.Run__alert(message)
+				if target_alert[i] == 0 {
+					err = t.Run__alert(message, url)
+					if err != nil {
+						return err
+					} else {
+						fmt.Print()
+					}
+				}
 
 				//로그 찍기
 				log.Println(message)
 
 			} else {
-				// HTTP 접속 정상의 경우, 로그 찍기
+				// HTTP 접속 정상 로그 찍기
 				log.Println("URL :", url, ", STATUS :", resp.Status)
 
 				// URL 대상 HTTP Body 값 호출
@@ -90,7 +98,14 @@ func (t *C_monitor) Run__Monitor(_n_monitor__rate int) error {
 					fmt.Print()
 				} else {
 					message := "URL :" + url + ", String Compare Err"
-					t.Run__alert(message)
+
+					if target_alert[i] == 0 {
+						err = t.Run__alert(message, url)
+						if err != nil {
+							return err
+						}
+					}
+					log.Println(message)
 				}
 			}
 		}
@@ -99,9 +114,13 @@ func (t *C_monitor) Run__Monitor(_n_monitor__rate int) error {
 }
 
 // 메일 및 SMS 발송
-func (t *C_monitor) Run__alert(_s_message string) error {
+func (t *C_monitor) Run__alert(_s_message, _s_url string) error {
 	var err error
 
+	err = t.Change_alert_count(_s_url)
+	if err != nil {
+		return err
+	}
 	_, err = t.Init_check()
 	if err != nil {
 		return err
@@ -128,5 +147,6 @@ func (t *C_monitor) Run__alert(_s_message string) error {
 			return err
 		}
 	}
+
 	return nil
 }
