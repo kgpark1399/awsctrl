@@ -28,7 +28,7 @@ func (t *C_monitor__db) Init__monitor_db() (bool, error) {
 }
 
 // DB URL 정보 호출 및 반환
-func (t *C_monitor__db) Get__urls() (url, data []string, err error) {
+func (t *C_monitor__db) Get__urls() (url, data []string, count []int, err error) {
 
 	_bool, err := t.Init__monitor_db()
 	if err != nil {
@@ -39,14 +39,14 @@ func (t *C_monitor__db) Get__urls() (url, data []string, err error) {
 	var websites []C_monitor
 
 	// DB URL STATUS 데이터 쿼리
-	rows, err := t.db_conn.Query("SELECT url,data FROM target")
+	rows, err := t.db_conn.Query("SELECT url,data,alert FROM target")
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	// URL, STATUS 데이터 각각 변수에 입력
 	for rows.Next() {
-		if err := rows.Scan(&website.s_monitor__url, &website.s_monitor__data); err != nil {
+		if err := rows.Scan(&website.s_monitor__url, &website.s_monitor__data, &website.n_monitor__alert_count); err != nil {
 			fmt.Print(err)
 		}
 
@@ -58,12 +58,16 @@ func (t *C_monitor__db) Get__urls() (url, data []string, err error) {
 	for _, target := range websites {
 		_t.arrs_monitor__urls = append(_t.arrs_monitor__urls, target.s_monitor__url)
 		_t.arrs_monitor__data = append(_t.arrs_monitor__data, target.s_monitor__data)
+		_t.arrn_monitor__alert = append(_t.arrn_monitor__alert, target.n_monitor__alert_count)
 	}
 
-	// 결과 반환
+	// 모니터링 대상 URL
 	url = _t.arrs_monitor__urls
+	// 문자열 비교 데이터
 	data = _t.arrs_monitor__data
-	return url, data, nil
+	// 알림 발송 여부 데이터
+	count = _t.arrn_monitor__alert
+	return url, data, count, nil
 
 }
 
@@ -146,6 +150,28 @@ func (t *C_monitor__db) Create__contact(_s_contact__name, _s_contact__mail, _s_c
 	n, err := result.RowsAffected()
 	if n == 1 {
 		fmt.Println("1 row inserted.")
+	}
+	return nil
+}
+
+// DB status 컬럼 데이터 변경 (check 성공 시)
+func (t *C_monitor__db) Change_alert_count(_sUrl string) error {
+
+	_bool, err := t.Init__monitor_db()
+	if err != nil {
+		fmt.Println(_bool, err)
+	}
+
+	stmt, err := t.db_conn.Prepare("UPDATE target SET alert=? WHERE url=?")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer stmt.Close()
+
+	// Prepared Statement 실행
+	_, err = stmt.Exec(1, _sUrl) //Placeholder 파라미터 순서대로 전달
+	if err != nil {
+		fmt.Println(err)
 	}
 	return nil
 }
