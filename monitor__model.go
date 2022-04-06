@@ -28,7 +28,7 @@ func (t *C_monitor__db) Init__monitor_db() (bool, error) {
 }
 
 // DB URL 정보 호출 및 반환
-func (t *C_monitor__db) Get__urls() (url, data []string, count []int, err error) {
+func (t *C_monitor__db) Get__target_info() (url, data []string, use__ssl, use__compare, count []int, err error) {
 
 	_bool, err := t.Init__monitor_db()
 	if err != nil {
@@ -39,14 +39,14 @@ func (t *C_monitor__db) Get__urls() (url, data []string, count []int, err error)
 	var websites []C_monitor
 
 	// DB URL STATUS 데이터 쿼리
-	rows, err := t.db_conn.Query("SELECT url,data,alert FROM target")
+	rows, err := t.db_conn.Query("SELECT url,data,use__ssl,use__compare,alert FROM target")
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	// URL, STATUS 데이터 각각 변수에 입력
 	for rows.Next() {
-		if err := rows.Scan(&website.s_monitor__url, &website.s_monitor__data, &website.n_monitor__alert_count); err != nil {
+		if err := rows.Scan(&website.s_monitor__url, &website.s_monitor__data, &website.s_monitor__use__ssl, &website.s_monitor__use__compare, &website.n_monitor__alert_count); err != nil {
 			fmt.Print(err)
 		}
 
@@ -58,16 +58,23 @@ func (t *C_monitor__db) Get__urls() (url, data []string, count []int, err error)
 	for _, target := range websites {
 		_t.arrs_monitor__urls = append(_t.arrs_monitor__urls, target.s_monitor__url)
 		_t.arrs_monitor__data = append(_t.arrs_monitor__data, target.s_monitor__data)
+		_t.arrs_monitor__use__ssl = append(_t.arrs_monitor__use__ssl, target.s_monitor__use__ssl)
+		_t.arrs_monitor__use__compare = append(_t.arrs_monitor__use__compare, target.s_monitor__use__compare)
 		_t.arrn_monitor__alert = append(_t.arrn_monitor__alert, target.n_monitor__alert_count)
+
 	}
 
 	// 모니터링 대상 URL
 	url = _t.arrs_monitor__urls
 	// 문자열 비교 데이터
 	data = _t.arrs_monitor__data
+	// ssl 사용 여부
+	use__ssl = _t.arrs_monitor__use__ssl
+	// 문자열 비교 사용 여부
+	use__compare = _t.arrs_monitor__use__compare
 	// 알림 발송 여부 데이터
 	count = _t.arrn_monitor__alert
-	return url, data, count, nil
+	return url, data, use__ssl, use__compare, count, nil
 
 }
 
