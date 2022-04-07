@@ -215,6 +215,5 @@ func (t *C_monitor) Run__alert(_s_message, _s_url_default string) error {
 			return err
 		}
 	}
-
 	return nil
 }
