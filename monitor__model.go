@@ -63,7 +63,6 @@ func (t *C_monitor__db) Get__target_info() (url, data []string, use__ssl, use__c
 		_t.arrn_monitor__alert = append(_t.arrn_monitor__alert, target.n_monitor__alert_count)
 
 	}
-
 	// 모니터링 대상 URL
 	url = _t.arrs_monitor__urls
 	// 문자열 비교 데이터
@@ -75,7 +74,6 @@ func (t *C_monitor__db) Get__target_info() (url, data []string, use__ssl, use__c
 	// 알림 발송 여부 데이터
 	count = _t.arrn_monitor__alert
 	return url, data, use__ssl, use__compare, count, nil
-
 }
 
 // DB 관리자 정보 가져오기
