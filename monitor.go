@@ -13,68 +13,61 @@ import (
 )
 
 type C_monitor struct {
+	// DB, log 구조체 상속
 	C_monitor__db
 	C_monitor__log
 
-	s_monitor__url  string
-	s_monitor__data string
+	s_protocol    string
+	s_url         string
+	s_hostname    string
+	s_data        string
+	s_message     string
+	s_use_compare string
+	s_alert_date  string
 
-	s_monitor__use__ssl     int
-	s_monitor__use__compare int
-	n_monitor__alert_count  int
-	n_monitor__rate         int
-
-	arrs_monitor__urls         []string
-	arrs_monitor__data         []string
-	arrs_monitor__use__ssl     []int
-	arrs_monitor__use__compare []int
-	arrn_monitor__alert        []int
+	n_rate int
 }
 
-func (t *C_monitor) Init_check() (bool, error) {
+func (t *C_monitor) Init_check() error {
 	var err error
 	if err != nil {
-		fmt.Print(err)
-		return false, err
+		log.Print(err)
+		return err
 	}
-	return true, nil
+	return nil
 }
 
 // URL HTTP 상태 체크 실행
-func (t *C_monitor) Run__Monitor(_n_monitor__rate int) error {
+func (t *C_monitor) Run__Monitor(_n_rate int) error {
 
-	_, err := t.Init_check()
+	err := t.Init_check()
 	if err != nil {
 		return err
 	}
 
 	// 반복 시간 설정
-	ticker := time.NewTicker(time.Second * time.Duration(_n_monitor__rate))
+	ticker := time.NewTicker(time.Second * time.Duration(_n_rate))
 
 	for range ticker.C {
 
 		// DB에서 모니터링 대상 URL 호출
-		target__url, target__data, target__use__ssl, target__use__compare, target__alert, err := t.Get__target_info()
+		target__protocol, target__url, target__data, target__use__compare, target__alert, err := t.Get__target_info()
 		if err != nil {
 			return err
 		}
 
-		// 모니터링 대상의 HTTPS 사용 유무 판단 후 모니터링 시작
+		// HTTP Stutus 체크
 		for i, url := range target__url {
-			if target__use__ssl[i] == 0 {
-				url__http := "http://" + url
-				err = t.Run__url_check(url__http, url, target__data[i], target__use__compare[i], target__alert[i])
-				if nil != err {
-					return err
-				}
-			} else {
-				url__https := "https://" + url
-				url__https_port := url + ":443"
-				err = t.Run__url_check(url__https, url, target__data[i], target__use__compare[i], target__alert[i])
-				if err != nil {
-					return err
-				}
-				err = t.Run__sslcheck(url__https_port, url, target__alert[i])
+			url__protocol := target__protocol[i] + url
+			url__port := url + ":443"
+			err = t.Run__url_check(url__protocol, url, target__data[i], target__use__compare[i], target__alert[i])
+			if nil != err {
+				return err
+			}
+
+			// HTTPS 사용 시 인증서 유효성 및 만료기간 체크
+			if target__protocol[i] == "https://" {
+				err = t.Run__sslcheck(url__port, url, target__alert[i])
 				if err != nil {
 					return err
 				}
@@ -84,19 +77,26 @@ func (t *C_monitor) Run__Monitor(_n_monitor__rate int) error {
 	return nil
 }
 
-func (t *C_monitor) Run__sslcheck(_s_url, _s_url_default string, _s_alert int) error {
+// SSL 인증서 유효성 및 만료일 체크
+func (t *C_monitor) Run__sslcheck(_s_url, _s_hostname, _s_alert_date string) error {
+	err := t.Init_check()
+	if err != nil {
+		return err
+	}
+
+	nowtime := time.Now().Format("2006-01-02")
 
 	// SSL 인증서 유효성 체크
 	conn, err := tls.Dial("tcp", _s_url, nil)
 	if err != nil {
-		fmt.Println(err)
+		log.Println("SSL 인증서 체크 오류 : ", err)
 		return err
 	}
 
 	// SSL 인증서와 호스트네임 비교
-	err = conn.VerifyHostname(_s_url_default)
+	err = conn.VerifyHostname(_s_hostname)
 	if err != nil {
-		fmt.Println(err)
+		log.Println("SSL 인증서와 호스트네임 매칭 오류 : ", err)
 		return err
 	}
 
@@ -108,15 +108,15 @@ func (t *C_monitor) Run__sslcheck(_s_url, _s_url_default string, _s_alert int) e
 
 	// 인증서 만료 한달 전 알림
 	if before_month.Before(now) {
-		message := "SSL Certificate Error , URL : " + _s_url
+		message := "SSL 인증서 만료 한달 전 입니다. , URL : " + _s_url
 		log.Println("SSL Certi Error, now : ", now, ", befor 1m expiry :", before_month)
 
-		if _s_alert == 0 {
-			err = t.Run__alert(message, _s_url_default)
+		if strings.EqualFold(_s_alert_date, nowtime) {
+			fmt.Print()
+		} else {
+			err = t.Run__alert(message, _s_hostname)
 			if err != nil {
 				return err
-			} else {
-				fmt.Print()
 			}
 		}
 
@@ -127,7 +127,15 @@ func (t *C_monitor) Run__sslcheck(_s_url, _s_url_default string, _s_alert int) e
 	return nil
 }
 
-func (t *C_monitor) Run__url_check(_s_url, _s_url_default, _s_data string, _s_compare, _s_alert int) error {
+// HTTT/S 상태 및 문자열 체크
+func (t *C_monitor) Run__url_check(_s_url, _s_hostname, _s_data, _s_use_compare, _s_alert_date string) error {
+
+	err := t.Init_check()
+	if err != nil {
+		return err
+	}
+
+	nowtime := time.Now().Format("2006-01-02")
 
 	// 모니터링 대상 URL http Get
 	resp, err := http.Get(_s_url)
@@ -135,12 +143,12 @@ func (t *C_monitor) Run__url_check(_s_url, _s_url_default, _s_data string, _s_co
 		message := "URL :" + _s_url + ", STATUS : ERR"
 
 		// 장애 알림 중복 발송 체크 후 알림 발송
-		if _s_alert == 0 {
-			err = t.Run__alert(message, _s_url_default)
+		if strings.EqualFold(_s_alert_date, nowtime) {
+			fmt.Print()
+		} else {
+			err = t.Run__alert(message, _s_hostname)
 			if err != nil {
 				return err
-			} else {
-				fmt.Print()
 			}
 		}
 		//로그 찍기
@@ -150,7 +158,7 @@ func (t *C_monitor) Run__url_check(_s_url, _s_url_default, _s_data string, _s_co
 		// HTTP 접속 정상 로그 찍기
 		log.Println("URL :", _s_url, ", STATUS :", resp.Status)
 
-		if _s_compare == 1 {
+		if _s_use_compare == "Y" {
 			// http body 불러오기
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
@@ -170,49 +178,15 @@ func (t *C_monitor) Run__url_check(_s_url, _s_url_default, _s_data string, _s_co
 				log.Println(message)
 
 				// 장애 알림 중복 발송 체크 후 알림 발송
-				if _s_alert == 0 {
-					err = t.Run__alert(message, _s_url)
+				if strings.EqualFold(_s_alert_date, nowtime) {
+					fmt.Print()
+				} else {
+					err = t.Run__alert(message, _s_hostname)
 					if err != nil {
 						return err
-					} else {
-						fmt.Print()
 					}
 				}
 			}
-		}
-	}
-	return nil
-}
-
-// 메일 및 SMS 발송
-func (t *C_monitor) Run__alert(_s_message, _s_url_default string) error {
-	var err error
-
-	// 중복 알림 발송 제한을 위한 카운트
-	err = t.Change_alert_count(_s_url_default)
-	if err != nil {
-		return err
-	}
-
-	c_sendmail := C_Sendmail{}
-
-	// DB 연락처, 메일 데이터 쿼리하여 변수 저장
-	mail, number, err := t.Get__contact_info()
-	if err != nil {
-		return err
-	}
-
-	// 메일 발송 함수 실행
-	err = c_sendmail.Send_mail(_s_message, mail)
-	if err != nil {
-		return err
-	}
-
-	// 연락처 string 변환 후 SMS 발송
-	for _, _number := range number {
-		err = Send_sns(_s_message, _number)
-		if err != nil {
-			return err
 		}
 	}
 	return nil
