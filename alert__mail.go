@@ -1,15 +1,21 @@
 package monitor
 
 import (
-	"fmt"
+	"log"
+	"net"
 	"net/smtp"
+	"time"
+
+	"gopkg.in/ini.v1"
 )
 
-type C_Sendmail struct {
-	// 메일 서버 연동 셋팅
-	// s_mail__id   string
-	// s_mail__pwd  string
-	// s_mail__host string
+type C_sendmail struct {
+
+	// 메일 연동 정보 (ini)
+	s_mail__id   string
+	s_mail__pwd  string
+	s_mail__host string
+	s_mail__port string
 
 	// 메일 발송 옵션
 	s_mail__from string
@@ -18,30 +24,46 @@ type C_Sendmail struct {
 	arrs_mail__to []string
 }
 
-// 메일 로그인 정보 입력
-func (t *C_Sendmail) Init__mail() (smtp.Auth, error) {
-	var err error
+// config.ini 의 메일 발송 관려 정보 변수 저장
+func (t *C_sendmail) Init__sendmail() (id, pwd, host, port string, err error) {
 
-	// 메일 로그인 정보
-	auth := smtp.PlainAuth("", "kgpark@devtools.kr", "bmtvoyrsqimessqi", "smtp.gmail.com")
-
+	// config ini 파일 읽기
+	cfg, err := ini.Load("config.ini")
 	if err != nil {
-		fmt.Print(err)
-		return auth, err
+		log.Println("Fail to read config.ini file : ", err)
+		return "", "", "", "", err
 	}
 
-	return auth, nil
+	// 메일 관련 정보 저장
+	t.s_mail__id = cfg.Section("SMTP").Key("S_mail__id").String()
+	t.s_mail__pwd = cfg.Section("SMTP").Key("S_mail__pwd").String()
+	t.s_mail__host = cfg.Section("SMTP").Key("S_mail__host").String()
+	t.s_mail__port = cfg.Section("SMTP").Key("S_mail__port").String()
+
+	smtpserver := t.s_mail__host + ":" + t.s_mail__port
+
+	// SMTP 서버 통신 체크
+	conn, err := net.DialTimeout("tcp", smtpserver, 3*time.Second)
+	if err != nil {
+		log.Println("Fail to connect smtp server : ", err, conn)
+		return "", "", "", "", err
+	}
+
+	return t.s_mail__id, t.s_mail__pwd, t.s_mail__host, t.s_mail__port, nil
 }
 
-// 메일 발송 함수
-func (t *C_Sendmail) Send_mail(_s_mail__body string, arrs_mail__to []string) error {
+// 메일 발송 준비 및 발송
+func (t *C_sendmail) Set__mail(_s_mail__body string, arrs_mail__to []string) error {
 
-	auth, err := t.Init__mail()
+	// ini 파일 메일 발송 정보 호출
+	id, pwd, host, port, err := t.Init__sendmail()
 	if err != nil {
 		return err
 	}
 
-	from := "kgpark@devtools.kr"
+	// 메일 송수신 정보 입력
+	auth := smtp.PlainAuth("", id, pwd, host)
+	from := id
 	to := arrs_mail__to
 
 	// 메시지 작성
@@ -51,10 +73,21 @@ func (t *C_Sendmail) Send_mail(_s_mail__body string, arrs_mail__to []string) err
 	msg := []byte(headerSubject + headerBlank + body)
 
 	// 메일 발송
-	err = smtp.SendMail("smtp.gmail.com:587", auth, from, to, msg)
+	smtp_server := host + ":" + port
+	err = smtp.SendMail(smtp_server, auth, from, to, msg)
 	if err != nil {
-		fmt.Print(err)
+		log.Println("Fail to connect smtp server  : ", err)
 		return err
 	}
 	return err
+}
+
+func Send__mail(_s_mail__body string, arrs_mail__to []string) error {
+
+	t := C_sendmail{}
+	err := t.Set__mail(_s_mail__body, arrs_mail__to)
+	if err != err {
+		return err
+	}
+	return nil
 }
