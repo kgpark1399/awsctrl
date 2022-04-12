@@ -37,7 +37,7 @@ func (t *C_monitor) Init_check() error {
 	return nil
 }
 
-// URL HTTP 상태 체크 실행
+// 모니터링 시스템 작동
 func (t *C_monitor) Run__Monitor(_n_rate int) error {
 
 	err := t.Init_check()
@@ -51,7 +51,7 @@ func (t *C_monitor) Run__Monitor(_n_rate int) error {
 	for range ticker.C {
 
 		// DB에서 모니터링 대상 URL 호출
-		target__protocol, target__url, target__data, target__use__compare, target__alert, err := t.Get__target_info()
+		target__protocol, target__url, target__data, target__use__compare, target__alert, err := t.Query__target_info()
 		if err != nil {
 			return err
 		}
@@ -60,14 +60,14 @@ func (t *C_monitor) Run__Monitor(_n_rate int) error {
 		for i, url := range target__url {
 			url__protocol := target__protocol[i] + url
 			url__port := url + ":443"
-			err = t.Run__url_check(url__protocol, url, target__data[i], target__use__compare[i], target__alert[i])
+			err = t.Url__status_check(url__protocol, url, target__data[i], target__use__compare[i], target__alert[i])
 			if nil != err {
 				return err
 			}
 
 			// HTTPS 사용 시 인증서 유효성 및 만료기간 체크
 			if target__protocol[i] == "https://" {
-				err = t.Run__sslcheck(url__port, url, target__alert[i])
+				err = t.Url__ssl_check(url__port, url, target__alert[i])
 				if err != nil {
 					return err
 				}
@@ -77,8 +77,8 @@ func (t *C_monitor) Run__Monitor(_n_rate int) error {
 	return nil
 }
 
-// SSL 인증서 유효성 및 만료일 체크
-func (t *C_monitor) Run__sslcheck(_s_url, _s_hostname, _s_alert_date string) error {
+// 모니터링 대상의 SSL 인증서 유효성&만료일 체크 및 알림
+func (t *C_monitor) Url__ssl_check(_s_url, _s_hostname, _s_alert_date string) error {
 	err := t.Init_check()
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func (t *C_monitor) Run__sslcheck(_s_url, _s_hostname, _s_alert_date string) err
 		if strings.EqualFold(_s_alert_date, nowtime) {
 			fmt.Print()
 		} else {
-			err = t.Run__alert(message, _s_hostname)
+			err = t.Send__alert(message, _s_hostname)
 			if err != nil {
 				return err
 			}
@@ -127,8 +127,8 @@ func (t *C_monitor) Run__sslcheck(_s_url, _s_hostname, _s_alert_date string) err
 	return nil
 }
 
-// HTTT/S 상태 및 문자열 체크
-func (t *C_monitor) Run__url_check(_s_url, _s_hostname, _s_data, _s_use_compare, _s_alert_date string) error {
+// 모니터링 대상의 HTTT/S 상태&문자열 체크 및 알림
+func (t *C_monitor) Url__status_check(_s_url, _s_hostname, _s_data, _s_use_compare, _s_alert_date string) error {
 
 	err := t.Init_check()
 	if err != nil {
@@ -146,7 +146,7 @@ func (t *C_monitor) Run__url_check(_s_url, _s_hostname, _s_data, _s_use_compare,
 		if strings.EqualFold(_s_alert_date, nowtime) {
 			fmt.Print()
 		} else {
-			err = t.Run__alert(message, _s_hostname)
+			err = t.Send__alert(message, _s_hostname)
 			if err != nil {
 				return err
 			}
@@ -181,7 +181,7 @@ func (t *C_monitor) Run__url_check(_s_url, _s_hostname, _s_data, _s_use_compare,
 				if strings.EqualFold(_s_alert_date, nowtime) {
 					fmt.Print()
 				} else {
-					err = t.Run__alert(message, _s_hostname)
+					err = t.Send__alert(message, _s_hostname)
 					if err != nil {
 						return err
 					}
@@ -189,5 +189,42 @@ func (t *C_monitor) Run__url_check(_s_url, _s_hostname, _s_data, _s_use_compare,
 			}
 		}
 	}
+	return nil
+}
+
+// 모니터링 대상 장애 발생 시 메일&SMS 알림 발송
+func (t *C_monitor) Send__alert(_s_monotor__message, _s_monitor__hostname string) error {
+	err := t.Init_check()
+	if err != nil {
+		return err
+	}
+
+	// DB 연락처, 메일 데이터 쿼리하여 변수 저장
+	mail, number, err := t.Query__admin_contact()
+	if err != nil {
+		return err
+	}
+
+	// 메일 발송 함수 실행
+	err = Send__alert_mail(_s_monotor__message, mail)
+	if err != nil {
+		return err
+	}
+
+	// 연락처 string 변환 후 SMS 발송
+	for _, _number := range number {
+		err = Send__alert_sms(_s_monotor__message, _number)
+		if err != nil {
+			return err
+		}
+	}
+
+	nowtime := time.Now().Format("2006-01-02")
+	// 중복 알림 발송 제한을 발송 날짜 기록
+	err = t.Update__alert_date(nowtime, _s_monitor__hostname)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
