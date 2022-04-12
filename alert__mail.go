@@ -24,7 +24,6 @@ type C_sendmail struct {
 	arrs_mail__to []string
 }
 
-// config.ini 의 메일 발송 관려 정보 변수 저장
 func (t *C_sendmail) Init__sendmail() (id, pwd, host, port string, err error) {
 
 	// config ini 파일 읽기
@@ -52,7 +51,6 @@ func (t *C_sendmail) Init__sendmail() (id, pwd, host, port string, err error) {
 	return t.s_mail__id, t.s_mail__pwd, t.s_mail__host, t.s_mail__port, nil
 }
 
-// 메일 발송 준비 및 발송
 func (t *C_sendmail) Set__mail(_s_mail__body string, arrs_mail__to []string) error {
 
 	// ini 파일 메일 발송 정보 호출
