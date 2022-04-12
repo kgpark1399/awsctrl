@@ -21,7 +21,7 @@ type C_monitor__db struct {
 	arrs_alert_date      []string
 }
 
-func (t *C_monitor__db) Init__monitor_db() error {
+func (t *C_monitor__db) Init() error {
 	var err error
 	if err != nil {
 		log.Println(err)
@@ -30,10 +30,10 @@ func (t *C_monitor__db) Init__monitor_db() error {
 	return nil
 }
 
-// DB URL 정보 호출 및 반환
-func (t *C_monitor__db) Get__target_info() (protocol, url, data, use_compare, alert []string, err error) {
+// 모니터링 대상 정보 쿼리
+func (t *C_monitor__db) Query__target_info() (protocol, url, data, use_compare, alert []string, err error) {
 
-	err = t.Init__monitor_db()
+	err = t.Init()
 	if err != nil {
 		return
 	}
@@ -44,7 +44,7 @@ func (t *C_monitor__db) Get__target_info() (protocol, url, data, use_compare, al
 	// DB URL STATUS 데이터 쿼리
 	rows, err := t.db_conn.Query("SELECT protocol,url,data,use__compare,alert FROM target")
 	if err != nil {
-		log.Println("sql 데이터 쿼리 오류 : ", err)
+		log.Println("[ERROR] Failed to database query : ", err)
 		return
 
 	}
@@ -52,7 +52,7 @@ func (t *C_monitor__db) Get__target_info() (protocol, url, data, use_compare, al
 	// URL, STATUS 데이터 각각 변수에 입력
 	for rows.Next() {
 		if err = rows.Scan(&website.s_protocol, &website.s_url, &website.s_data, &website.s_use_compare, &website.s_alert_date); err != nil {
-			log.Println(err)
+			log.Println("[ERROR] Failed to database rows scane : ", err)
 			return
 		}
 
@@ -81,10 +81,10 @@ func (t *C_monitor__db) Get__target_info() (protocol, url, data, use_compare, al
 	return protocol, url, data, use_compare, alert, nil
 }
 
-// DB 관리자 정보 가져오기
-func (t *C_monitor__db) Get__contact_info() (mail, number []string, err error) {
+// 관리자(장애알림 대상) 연락처 쿼리
+func (t *C_monitor__db) Query__admin_contact() (mail, number []string, err error) {
 
-	err = t.Init__monitor_db()
+	err = t.Init()
 	if err != nil {
 		return
 	}
@@ -95,14 +95,14 @@ func (t *C_monitor__db) Get__contact_info() (mail, number []string, err error) {
 	// DB URL, STATUS 쿼리
 	rows, err := t.db_conn.Query("SELECT mail,mobile FROM contact")
 	if err != nil {
-		log.Println("sql 데이터 쿼리 오류 : ", err)
+		log.Println("[ERROR] Failed to database query : ", err)
 		return
 	}
 
 	// 쿼리 결과 변수 저장
 	for rows.Next() {
 		if err = rows.Scan(&contact.s_contact__mail, &contact.s_contact__number); err != nil {
-			log.Println(err)
+			log.Println("[ERROR] Failed to database rows scane : ", err)
 			return
 		}
 		contacts = append(contacts, contact)
@@ -120,10 +120,10 @@ func (t *C_monitor__db) Get__contact_info() (mail, number []string, err error) {
 	return mail, number, nil
 }
 
-// DB ULR 대상(Target) 추가
-func (t *C_monitor__db) Create__url(_s_target__name, _s_target__url, _s_target__status string) error {
+// 모니터링 대상 URL 추가
+func (t *C_monitor__db) Update__target(_s_target__name, _s_target__url, _s_target__status string) error {
 
-	err := t.Init__monitor_db()
+	err := t.Init()
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func (t *C_monitor__db) Create__url(_s_target__name, _s_target__url, _s_target__
 	// INSERT 문 실행
 	result, err := t.db_conn.Exec("INSERT INTO target (name,url,status) VALUES (?, ?, ?)", _s_target__name, _s_target__url, _s_target__status)
 	if err != nil {
-		log.Println("sql 데이터 쿼리 오류 : ", err)
+		log.Println("[ERROR] Failed to database insert : ", err)
 		return err
 	}
 
@@ -143,10 +143,10 @@ func (t *C_monitor__db) Create__url(_s_target__name, _s_target__url, _s_target__
 	return nil
 }
 
-// DB URL 담당자(Contact) 정보 추가
-func (t *C_monitor__db) Create__contact(_s_contact__name, _s_contact__mail, _s_contact__number string) error {
+// 관리자(장애 알림 대상) 연락처 추가
+func (t *C_monitor__db) Update__admin_contact(_s_contact__name, _s_contact__mail, _s_contact__number string) error {
 
-	err := t.Init__monitor_db()
+	err := t.Init()
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (t *C_monitor__db) Create__contact(_s_contact__name, _s_contact__mail, _s_c
 	// INSERT 문 실행
 	result, err := t.db_conn.Exec("INSERT INTO contact (user,mail,mobile) VALUES (?, ?, ?)", _s_contact__name, _s_contact__mail, _s_contact__number)
 	if err != nil {
-		log.Println("sql 데이터 쿼리 오류", err)
+		log.Println("[ERROR] Failed to database insert : ", err)
 		return err
 	}
 
@@ -166,17 +166,17 @@ func (t *C_monitor__db) Create__contact(_s_contact__name, _s_contact__mail, _s_c
 	return nil
 }
 
-// 알림 중복 방지를 위한 alert 상태 변경
-func (t *C_monitor__db) Update__date(_s_url__alert_date, _s_hostname string) error {
+// 장애 알림 중복 발송 제한을 위한 알림 발송 기록
+func (t *C_monitor__db) Update__alert_date(_s_url__alert_date, _s_hostname string) error {
 
-	err := t.Init__monitor_db()
+	err := t.Init()
 	if err != nil {
 		return err
 	}
 
 	stmt, err := t.db_conn.Prepare("UPDATE target SET alert=? WHERE url=?")
 	if err != nil {
-		log.Println("sql 데이터 업데이트 오류 : ", err)
+		log.Println("[ERROR] Failed to database update : ", err)
 		return err
 	}
 	defer stmt.Close()
