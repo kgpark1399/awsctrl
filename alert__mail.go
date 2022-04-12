@@ -74,7 +74,7 @@ func (t *C_sendmail) Set__mail(_s_mail__body string, arrs_mail__to []string) err
 	smtp_server := host + ":" + port
 	err = smtp.SendMail(smtp_server, auth, from, to, msg)
 	if err != nil {
-		log.Println("Fail to connect smtp server  : ", err)
+		log.Println("Fail to send mail, check your account&SMTP information : ", err)
 		return err
 	}
 	return err
