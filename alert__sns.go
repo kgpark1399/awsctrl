@@ -2,14 +2,14 @@ package monitor
 
 import (
 	"context"
-	"fmt"
+	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 )
 
-type C_sns struct {
+type C_aws_sms struct {
 	cfg aws.Config
 
 	s_region  string
@@ -18,33 +18,19 @@ type C_sns struct {
 	s_title   string
 }
 
-// 문자 발송 함수
-func Send_sns(_s_message, _s_mobile string) error {
-	t := C_sns{}
-	err := t.Init_config()
-	if err != nil {
-		return err
-	}
-
-	err = t.Send(_s_message, _s_mobile)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (t *C_sns) Init_config() error {
+// AWS 환경설정 호출 및 접속
+func (t *C_aws_sms) Init() error {
 	_cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
 	if err != nil {
-		fmt.Print(err)
+		log.Println("[ERROR] Failed to connect aws configure : ", err)
 		return err
 	}
 	t.cfg = _cfg
 	return nil
 }
 
-func (t *C_sns) Send(_s_message, _s_mobile string) error {
+// 경고 알림 문자 발송
+func (t *C_aws_sms) Send__sms(_s_message, _s_mobile string) error {
 
 	client := sns.NewFromConfig(t.cfg)
 
@@ -55,7 +41,22 @@ func (t *C_sns) Send(_s_message, _s_mobile string) error {
 	})
 
 	if err != nil {
-		fmt.Print(err)
+		log.Println("[ERROR] Failed to aws publish input : ", err)
+		return err
+	}
+	return nil
+}
+
+// Send__sms 구조체 없이 실행
+func Send__alert_sms(_s_message, _s_mobile string) error {
+	t := C_aws_sms{}
+	err := t.Init()
+	if err != nil {
+		return err
+	}
+
+	err = t.Send__sms(_s_message, _s_mobile)
+	if err != nil {
 		return err
 	}
 	return nil
