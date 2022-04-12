@@ -10,8 +10,8 @@ type C_monitor__log struct {
 	s_file__name string
 }
 
-// 모니터링 시스템 로그 기록
-func (t *C_monitor__log) Enable_monitor_log(_s_file__name string) error {
+// 모니터링 로그 활성화
+func (t *C_monitor__log) Enable_log(_s_file__name string) error {
 
 	err := t.Init()
 	if err != nil {
