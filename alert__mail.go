@@ -9,7 +9,7 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-type C_sendmail struct {
+type C_mail struct {
 
 	// 메일 연동 정보 (ini)
 	s_mail__id   string
@@ -24,12 +24,13 @@ type C_sendmail struct {
 	arrs_mail__to []string
 }
 
-func (t *C_sendmail) Init__sendmail() (id, pwd, host, port string, err error) {
+// 메일 발송 서버 정보 ini 호출 및 SMTP 서버 통신 테스트
+func (t *C_mail) Init() (id, pwd, host, port string, err error) {
 
 	// config ini 파일 읽기
 	cfg, err := ini.Load("config.ini")
 	if err != nil {
-		log.Println("Fail to read config.ini file : ", err)
+		log.Println("[ERROR] Fail to read config.ini file : ", err)
 		return "", "", "", "", err
 	}
 
@@ -44,17 +45,18 @@ func (t *C_sendmail) Init__sendmail() (id, pwd, host, port string, err error) {
 	// SMTP 서버 통신 체크
 	conn, err := net.DialTimeout("tcp", smtpserver, 3*time.Second)
 	if err != nil {
-		log.Println("Fail to connect smtp server : ", err, conn)
+		log.Println("[ERROR] Fail to connect smtp server : ", err, conn)
 		return "", "", "", "", err
 	}
 
 	return t.s_mail__id, t.s_mail__pwd, t.s_mail__host, t.s_mail__port, nil
 }
 
-func (t *C_sendmail) Set__mail(_s_mail__body string, arrs_mail__to []string) error {
+// 메일 발송 함수
+func (t *C_mail) Send__mail(_s_mail__body string, arrs_mail__to []string) error {
 
 	// ini 파일 메일 발송 정보 호출
-	id, pwd, host, port, err := t.Init__sendmail()
+	id, pwd, host, port, err := t.Init()
 	if err != nil {
 		return err
 	}
@@ -74,16 +76,17 @@ func (t *C_sendmail) Set__mail(_s_mail__body string, arrs_mail__to []string) err
 	smtp_server := host + ":" + port
 	err = smtp.SendMail(smtp_server, auth, from, to, msg)
 	if err != nil {
-		log.Println("Fail to send mail, check your account&SMTP information : ", err)
+		log.Println("[ERROR] Fail to send mail, check your account&SMTP information : ", err)
 		return err
 	}
 	return err
 }
 
-func Send__mail(_s_mail__body string, arrs_mail__to []string) error {
+// 메일 발송 함수 - 구조체x
+func Send__alert_mail(_s_mail__body string, arrs_mail__to []string) error {
 
-	t := C_sendmail{}
-	err := t.Set__mail(_s_mail__body, arrs_mail__to)
+	t := C_mail{}
+	err := t.Send__mail(_s_mail__body, arrs_mail__to)
 	if err != err {
 		return err
 	}
