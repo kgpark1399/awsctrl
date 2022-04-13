@@ -29,7 +29,7 @@ func (t *C_database) Init(_s_db__id, _s_db__pwd, _s_db__hostname, _s_db__name st
 }
 
 // DB Connection 시작
-func (t *C_database) Db__conn(_s_db__type, _s_db__id, _s_db__pwd, _s_db__hostname, _s_db__name string) error {
+func (t *C_database) Conn(_s_db__type, _s_db__id, _s_db__pwd, _s_db__hostname, _s_db__name string) error {
 
 	config, err := t.Init(_s_db__id, _s_db__pwd, _s_db__hostname, _s_db__name)
 	if err != nil {
@@ -46,6 +46,6 @@ func (t *C_database) Db__conn(_s_db__type, _s_db__id, _s_db__pwd, _s_db__hostnam
 }
 
 // DB Connection 종료
-func (t *C_database) Db__close() error {
+func (t *C_database) Close() error {
 	return t.db_conn.Close()
 }
