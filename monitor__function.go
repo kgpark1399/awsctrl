@@ -17,8 +17,8 @@ type C_monitor__fuction struct {
 	C_monitor__db
 	C_monitor__log
 
-	s_hostname string
-	s_message  string
+	s_url     string
+	s_message string
 
 	n_rate int
 }
@@ -46,77 +46,34 @@ func (t *C_monitor__fuction) Start__http_s_healthcheck(_n_rate int) error {
 	for range ticker.C {
 
 		// DB에서 모니터링 대상 URL 호출
-		target__protocol, target__url, target__data, target__use__compare, target__alert, err := t.Get__monitoring_target()
+		_url, _data, _use__ssl, _use__string_compare, _alert_date, err := t.Get__monitoring_target()
 		if err != nil {
 			return err
 		}
 
-		// HTTP Stutus 체크
-		for i, url := range target__url {
-			url__protocol := target__protocol[i] + "://" + url
-			url__port := url + ":443"
-			err = t.Validaton__http_status(url__protocol, url, target__data[i], target__use__compare[i], target__alert[i])
+		for i, url := range _url {
+			// HTTP Stutus 체크
+			http_url := "http://" + url
+			err = t.Validaton__http_status(http_url, _data[i], _use__string_compare[i], _alert_date[i])
 			if nil != err {
 				return err
 			}
 
 			// HTTPS 사용 시 인증서 유효성 및 만료기간 체크
-			if target__protocol[i] == "https://" {
-				err = t.Validation__ssl_certi(url__port, url, target__alert[i])
+			if _use__ssl[i] == "Y" {
+				err = t.Validation__ssl_certi(url, _alert_date[i])
 				if err != nil {
 					return err
 				}
 			}
+
 		}
 	}
-	return nil
-}
-
-// 모니터링 대상의 SSL 인증서 유효성&만료일 체크 및 알림
-func (t *C_monitor__fuction) Validation__ssl_certi(_s_url, _s_hostname, _s_alert_date string) error {
-	err := t.Init_check()
-	if err != nil {
-		return err
-	}
-
-	// SSL 인증서 유효성 체크
-	conn, err := tls.Dial("tcp", _s_url, nil)
-	if err != nil {
-		log.Println("SSL 인증서 체크 오류 : ", err)
-		return err
-	}
-
-	// SSL 인증서와 호스트네임 비교
-	err = conn.VerifyHostname(_s_hostname)
-	if err != nil {
-		log.Println("SSL 인증서와 호스트네임 매칭 오류 : ", err)
-		return err
-	}
-
-	// SSL 인증서 만료 체크
-	expiry := conn.ConnectionState().PeerCertificates[0].NotAfter
-
-	now := time.Now()
-	before_month := expiry.AddDate(0, -1, 0)
-
-	// 인증서 만료 한달 전 알림
-	if before_month.Before(now) {
-		message := "SSL 인증서 만료 한달 전 입니다. , URL : " + _s_url
-		log.Println("SSL Certi Error, now : ", now, ", befor 1m expiry :", before_month)
-		err = t.Send__alert(message, _s_hostname, _s_alert_date)
-		if err != nil {
-			return err
-		}
-
-	} else {
-		log.Println("SSL Certi OK, now : ", now, ", befor 1m expiry :", before_month)
-	}
-
 	return nil
 }
 
 // 모니터링 대상의 HTTT/S 상태&문자열 체크 및 알림
-func (t *C_monitor__fuction) Validaton__http_status(_s_url, _s_hostname, _s_data, _s_use_compare, _s_alert_date string) error {
+func (t *C_monitor__fuction) Validaton__http_status(_s_url, _s_data, _s_use_compare, _s_alert_date string) error {
 
 	err := t.Init_check()
 	if err != nil {
@@ -127,7 +84,7 @@ func (t *C_monitor__fuction) Validaton__http_status(_s_url, _s_hostname, _s_data
 	resp, err := http.Get(_s_url)
 	if err != nil || resp.StatusCode >= 400 {
 		message := "URL :" + _s_url + ", STATUS : ERR"
-		err = t.Send__alert(message, _s_hostname, _s_alert_date)
+		err = t.Send__alert(message, _s_url, _s_alert_date)
 		if err != nil {
 			return err
 		}
@@ -157,7 +114,7 @@ func (t *C_monitor__fuction) Validaton__http_status(_s_url, _s_hostname, _s_data
 			} else {
 				message := "URL :" + _s_url + ", String Compare Err"
 				log.Println(message)
-				err = t.Send__alert(message, _s_hostname, _s_alert_date)
+				err = t.Send__alert(message, _s_url, _s_alert_date)
 				if err != nil {
 					return err
 				}
@@ -165,6 +122,43 @@ func (t *C_monitor__fuction) Validaton__http_status(_s_url, _s_hostname, _s_data
 			}
 		}
 	}
+	return nil
+}
+
+// 모니터링 대상의 SSL 인증서 유효성&만료일 체크 및 알림
+func (t *C_monitor__fuction) Validation__ssl_certi(_s_url, _s_alert_date string) error {
+	err := t.Init_check()
+	if err != nil {
+		return err
+	}
+
+	// SSL 인증서 유효성 체크
+	url_port := _s_url + ":443"
+	conn, err := tls.Dial("tcp", url_port, nil)
+	if err != nil {
+		log.Println("SSL 인증서 체크 오류 : ", err)
+		return err
+	}
+
+	// SSL 인증서 만료 체크
+	expiry := conn.ConnectionState().PeerCertificates[0].NotAfter
+
+	now := time.Now()
+	before_month := expiry.AddDate(0, -1, 0)
+
+	// 인증서 만료 한달 전 알림
+	if before_month.Before(now) {
+		message := "SSL 인증서 만료 한달 전 입니다. , URL : " + _s_url
+		log.Println("SSL Certi Error, now : ", now, ", befor 1m expiry :", before_month)
+		err = t.Send__alert(message, _s_url, _s_alert_date)
+		if err != nil {
+			return err
+		}
+
+	} else {
+		log.Println("SSL Certi OK, now : ", now, ", befor 1m expiry :", before_month)
+	}
+
 	return nil
 }
 
