@@ -13,6 +13,12 @@ type C_monitor__db struct {
 	s_contact__mail   string
 	s_contact__number string
 
+	s_protocol    string
+	s_url         string
+	s_data        string
+	s_use_compare string
+	s_alert_date  string
+
 	arrs_contact__number []string
 	arrs_protocol        []string
 	arrs_urls            []string
@@ -38,8 +44,8 @@ func (t *C_monitor__db) Get__monitoring_target() (protocol, url, data, use_compa
 		return
 	}
 
-	var website C_monitor
-	var websites []C_monitor
+	var website C_monitor__db
+	var websites []C_monitor__db
 
 	// DB URL STATUS 데이터 쿼리
 	rows, err := t.db_conn.Query("SELECT protocol,url,data,use__compare,alert FROM target")
@@ -59,26 +65,18 @@ func (t *C_monitor__db) Get__monitoring_target() (protocol, url, data, use_compa
 		websites = append(websites, website)
 	}
 
-	_t := C_monitor{}
+	var arrs_protocol, arrs_urls, arrs_data, arrs_use_compare, arrs_alert_date []string
 
 	for _, target := range websites {
-		_t.arrs_protocol = append(_t.arrs_protocol, target.s_protocol)
-		_t.arrs_urls = append(_t.arrs_urls, target.s_url)
-		_t.arrs_data = append(_t.arrs_data, target.s_data)
-		_t.arrs_use_compare = append(_t.arrs_use_compare, target.s_use_compare)
-		_t.arrs_alert_date = append(_t.arrs_alert_date, target.s_alert_date)
+		arrs_protocol = append(arrs_protocol, target.s_protocol)
+		arrs_urls = append(arrs_urls, target.s_url)
+		arrs_data = append(arrs_data, target.s_data)
+		arrs_use_compare = append(arrs_use_compare, target.s_use_compare)
+		arrs_alert_date = append(arrs_alert_date, target.s_alert_date)
 
 	}
-	protocol = _t.arrs_protocol
-	// 모니터링 대상 URL
-	url = _t.arrs_urls
-	// 문자열 비교 데이터
-	data = _t.arrs_data
-	// 문자열 비교 사용 여부
-	use_compare = _t.arrs_use_compare
-	// 알림 발송 여부 데이터
-	alert = _t.arrs_alert_date
-	return protocol, url, data, use_compare, alert, nil
+
+	return arrs_protocol, arrs_urls, arrs_data, arrs_use_compare, arrs_alert_date, nil
 }
 
 // 장애 알림 대상 호출
