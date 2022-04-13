@@ -13,14 +13,13 @@ type C_monitor__db struct {
 	s_contact__mail   string
 	s_contact__number string
 
-	s_protocol    string
-	s_url         string
-	s_data        string
-	s_use_compare string
-	s_alert_date  string
+	s_url                 string
+	s_data                string
+	s_use__ssl            string
+	s_use__string_compare string
+	s_alert_date          string
 
 	arrs_contact__number []string
-	arrs_protocol        []string
 	arrs_urls            []string
 	arrs_data            []string
 	arrs_use_compare     []string
@@ -37,7 +36,7 @@ func (t *C_monitor__db) Init() error {
 }
 
 // 모니터링 대상 정보 호출
-func (t *C_monitor__db) Get__monitoring_target() (protocol, url, data, use_compare, alert []string, err error) {
+func (t *C_monitor__db) Get__monitoring_target() (url, data, use__ssl, use__compare, alert []string, err error) {
 
 	err = t.Init()
 	if err != nil {
@@ -48,7 +47,7 @@ func (t *C_monitor__db) Get__monitoring_target() (protocol, url, data, use_compa
 	var websites []C_monitor__db
 
 	// DB URL STATUS 데이터 쿼리
-	rows, err := t.db_conn.Query("SELECT protocol,url,data,use__compare,alert FROM target")
+	rows, err := t.db_conn.Query("SELECT url,data,use__ssl,use__string_compare,alert FROM target")
 	if err != nil {
 		log.Println("[ERROR] Failed to database query : ", err)
 		return
@@ -57,7 +56,7 @@ func (t *C_monitor__db) Get__monitoring_target() (protocol, url, data, use_compa
 
 	// URL, STATUS 데이터 각각 변수에 입력
 	for rows.Next() {
-		if err = rows.Scan(&website.s_protocol, &website.s_url, &website.s_data, &website.s_use_compare, &website.s_alert_date); err != nil {
+		if err = rows.Scan(&website.s_url, &website.s_data, &website.s_use__ssl, &website.s_use__string_compare, &website.s_alert_date); err != nil {
 			log.Println("[ERROR] Failed to database rows scane : ", err)
 			return
 		}
@@ -65,18 +64,18 @@ func (t *C_monitor__db) Get__monitoring_target() (protocol, url, data, use_compa
 		websites = append(websites, website)
 	}
 
-	var arrs_protocol, arrs_urls, arrs_data, arrs_use_compare, arrs_alert_date []string
+	var arrs_urls, arrs_data, arrs_use__ssl, arrs_use__string_compare, arrs_alert_date []string
 
 	for _, target := range websites {
-		arrs_protocol = append(arrs_protocol, target.s_protocol)
 		arrs_urls = append(arrs_urls, target.s_url)
 		arrs_data = append(arrs_data, target.s_data)
-		arrs_use_compare = append(arrs_use_compare, target.s_use_compare)
+		arrs_use__ssl = append(arrs_use__ssl, target.s_use__ssl)
+		arrs_use__string_compare = append(arrs_use__string_compare, target.s_use__string_compare)
 		arrs_alert_date = append(arrs_alert_date, target.s_alert_date)
 
 	}
 
-	return arrs_protocol, arrs_urls, arrs_data, arrs_use_compare, arrs_alert_date, nil
+	return arrs_urls, arrs_data, arrs_use__ssl, arrs_use__string_compare, arrs_alert_date, nil
 }
 
 // 장애 알림 대상 호출
@@ -119,7 +118,7 @@ func (t *C_monitor__db) Get__Alert_Notification_target() (mail, number []string,
 }
 
 // 모니터링 대상 추가
-func (t *C_monitor__db) Insert__Monitoring_target(_s_target__name, _s_target__url, _s_target__status string) error {
+func (t *C_monitor__db) Insert__Monitoring_target(_s_target__name, _s_target__protocol, _s_target__url string) error {
 
 	err := t.Init()
 	if err != nil {
@@ -127,7 +126,7 @@ func (t *C_monitor__db) Insert__Monitoring_target(_s_target__name, _s_target__ur
 	}
 
 	// INSERT 문 실행
-	result, err := t.db_conn.Exec("INSERT INTO target (name,url,status) VALUES (?, ?, ?)", _s_target__name, _s_target__url, _s_target__status)
+	result, err := t.db_conn.Exec("INSERT INTO target (name,protocol,url,data,use__compare) VALUES (?, ?, ?, ?, ?)", _s_target__name, _s_target__protocol, _s_target__url, "test", "N")
 	if err != nil {
 		log.Println("[ERROR] Failed to database insert : ", err)
 		return err
