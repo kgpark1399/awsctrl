@@ -30,8 +30,8 @@ func (t *C_monitor__db) Init() error {
 	return nil
 }
 
-// 모니터링 대상 정보 쿼리
-func (t *C_monitor__db) Query__target_info() (protocol, url, data, use_compare, alert []string, err error) {
+// 모니터링 대상 정보 호출
+func (t *C_monitor__db) Get__monitoring_target() (protocol, url, data, use_compare, alert []string, err error) {
 
 	err = t.Init()
 	if err != nil {
@@ -81,8 +81,8 @@ func (t *C_monitor__db) Query__target_info() (protocol, url, data, use_compare, 
 	return protocol, url, data, use_compare, alert, nil
 }
 
-// 관리자(장애알림 대상) 연락처 쿼리
-func (t *C_monitor__db) Query__admin_contact() (mail, number []string, err error) {
+// 장애 알림 대상 호출
+func (t *C_monitor__db) Get__Alert_Notification_target() (mail, number []string, err error) {
 
 	err = t.Init()
 	if err != nil {
@@ -120,8 +120,8 @@ func (t *C_monitor__db) Query__admin_contact() (mail, number []string, err error
 	return mail, number, nil
 }
 
-// 모니터링 대상 URL 추가
-func (t *C_monitor__db) Update__target(_s_target__name, _s_target__url, _s_target__status string) error {
+// 모니터링 대상 추가
+func (t *C_monitor__db) Insert__Monitoring_target(_s_target__name, _s_target__url, _s_target__status string) error {
 
 	err := t.Init()
 	if err != nil {
@@ -143,8 +143,8 @@ func (t *C_monitor__db) Update__target(_s_target__name, _s_target__url, _s_targe
 	return nil
 }
 
-// 관리자(장애 알림 대상) 연락처 추가
-func (t *C_monitor__db) Update__admin_contact(_s_contact__name, _s_contact__mail, _s_contact__number string) error {
+// 장애 알림 대상 추가
+func (t *C_monitor__db) Insert__alert_notification_target(_s_contact__name, _s_contact__mail, _s_contact__number string) error {
 
 	err := t.Init()
 	if err != nil {
