@@ -1,52 +1,67 @@
+[모니터링 프로그램 기능 정리]
 
-[필요 기능 정의]
+   =환경설정
+       - ini 저장
+       - email 발송 서버(smtp) 정보 로딩 ( 저장은 txt 편집기로 ) 
+       - 메일 / sms 받을 관리자 주소 및 번호 로딩 ( 저장은 txt 편집기로 )
 
-1. 알림 기능
-  1.1 메일 발송 기능
-  1.2 SMS 발송 기능
-  1.3 중복 발송 방지 기능
-  
-2. 검사 기능
-  2.1 모니터링 대상의 HTTP/S 상태 검사
-  2.2 모니터링 대상과 지정 된 문자열 비교
-  2.3 모니터링 대상의 SSL 인증서 유효 / 만료 기간 검사
+   =감시대상 목록 관리
+       - ini 감시 대상 데이터 로딩
+       - 검사 주기 값 저장
 
+   =HTTP 핼스체크
+       - http status code 얻기
+
+   =인증서 정보 얻기
+       - 유효성 / 만기일 얻기
+
+   =모니터링 감지 내역 발송 - email 발송
+      - 수신 주소, 제목, 내용 입력 시 발송
+
+   =모니터링 감지 내역 발송 - aws_sms
+      - 수신 번호, 제목, 내용 입력 시 발송
  
-[프로세스]
-
-1. 모니터링 대상 URL 호출
-2. 모니터링 대상 HTTP/S 상태 검사
-3. 모니터링 대상의 문자열 비교 검사 
-5. 장애 시 알림(메일,문자) 발송
+   =모니터링 감지 내역 발송 - telegram API
+      - 채팅id, 봇id, 내용 입력 시 발송
 
 
-[클래스&함수 정의]
 
-1. C_monitor
-Run__monitor  // 모니터링 시스템 작동
-Url__ssl_check  // 모니터링 대상의 SSL 인증서 유효성&만료일 체크 및 알림
-Url__status_check // 모니터링 대상의 HTTT/S 상태&문자열 체크 및 알림
+[ 기능 별 클래스 및 항목 정리]
 
-2. C_monitor__log 
-Enable_log // 모니터링 로그 활성화
+1. C_list_target
+    1.0 INIT
+         * ini 파일 유무 체크
+    1.1 Get__monitor
+         * 모니터링 대상 리스트 로딩
+    1.2 Get__notification
+         * 장애 감지 시 알림 대상
+ 
+2. C_http_status_code
+    2.0 INIT 
+         * 기능 없음
+    2.1 status_code
+         * http status 상태 및 코드 체크
 
-3. C_monitor__db
-Query__target_info // 모니터링 대상 정보 쿼리
-Query__admin_contact // 관리자(장애 알림 대상) 연락처 쿼리
-Update__target // 모니터링 대상 URL 추가
-Update__admin_contact // 관리자(장애 알림 대상) 연락처 추가
-Update__alert_date // 장애 알림 중복 발송 제한을 위한 알림 발송 기록
+3. C_ssl_cert
+    3.0 INIT
+         * 기능 없음
+    3.1 SslCertificate_expiryPeriod
+         * 인증서 유효성 및 만료 기간 체크
+       
+4. C_notice__mail
+    4.0 INIT
+          *SMTP 서버 접속 체크
+    4.1 Send
+          *메일 발송
 
-4. C_mail
-Init // 메일 발송 서버 정보 ini 호출 및 SMTP 서버 통신 테스트
-Send__mail // 경고 알림 메일 발송
-Send_alert_mail // Send__mail 구조체 없이 실행 
+5. C_notice__sms
+    5.0 INIT
+          * AWS 자격증명 접속 체크
+    5.1 Send
+          * sms 발송
 
-5. C_aws_sms
-Init // AWS 접속 정보 ini 호출 및 AWS 접속 테스트
-Send__sms //  경고 알림 문자 발송
-Send_alert_sms // Send__sms 구조체 없이 실행
-
-6. database
-DB__conn : // DB Connection 시작
-DB__close : // DB Connection 종료
+6. C_notice__telegram
+    6.0 INIT
+          * 봇id 접속 체크
+    6.1 Send
+          * 텔레그렘 메세지 발송
