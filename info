@@ -1,31 +1,3 @@
-[모니터링 프로그램 기능 정리]
-
-   =환경설정
-       - ini 저장
-       - email 발송 서버(smtp) 정보 로딩 ( 저장은 txt 편집기로 ) 
-       - 메일 / sms 받을 관리자 주소 및 번호 로딩 ( 저장은 txt 편집기로 )
-
-   =감시대상 목록 관리
-       - ini 감시 대상 데이터 로딩
-       - 검사 주기 값 저장
-
-   =HTTP 핼스체크
-       - http status code 얻기
-
-   =인증서 정보 얻기
-       - 유효성 / 만기일 얻기
-
-   =모니터링 감지 내역 발송 - email 발송
-      - 수신 주소, 제목, 내용 입력 시 발송
-
-   =모니터링 감지 내역 발송 - aws_sms
-      - 수신 번호, 제목, 내용 입력 시 발송
- 
-   =모니터링 감지 내역 발송 - telegram API
-      - 채팅id, 봇id, 내용 입력 시 발송
-
-
-
 [ 기능 별 클래스 및 항목 정리]
 
 1. C_list_target
@@ -33,24 +5,24 @@
          * ini 파일 유무 체크
     1.1 Get__monitor
          * 모니터링 대상 리스트 로딩
-    1.2 Get__notification
-         * 장애 감지 시 알림 대상
+    1.2 Get__alert_notice_contact
+         * 장애 감지 시 알림 대상 리스트 로딩
  
 2. C_http_status_code
     2.0 INIT 
          * 기능 없음
-    2.1 status_code
-         * http status 상태 및 코드 체크
+    2.1 Get
+         * http status http 상태 코드 얻기
 
 3. C_ssl_cert
     3.0 INIT
          * 기능 없음
-    3.1 SslCertificate_expiryPeriod
-         * 인증서 유효성 및 만료 기간 체크
+    3.1 Get__expiryPeriod
+         * SSL 인증서 유효성 만료 기간 체크
        
 4. C_notice__mail
     4.0 INIT
-          *SMTP 서버 접속 체크
+          *SMTP 메일 발송 서버 접속 체크
     4.1 Send
           *메일 발송
 
@@ -58,10 +30,10 @@
     5.0 INIT
           * AWS 자격증명 접속 체크
     5.1 Send
-          * sms 발송
+          * 문자 발송
 
 6. C_notice__telegram
     6.0 INIT
-          * 봇id 접속 체크
+          * 텔레그램 봇id 접속 체크
     6.1 Send
-          * 텔레그렘 메세지 발송
+          * 메세지 발송
