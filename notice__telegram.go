@@ -22,6 +22,7 @@ func (t *C_notice__telegram) Init() error {
 	//config.ini 파일 읽기
 	cfg, err := ini.Load("config.ini")
 	if err != nil {
+		log.Println("[ERROR] Not found config.ini file : ", err)
 		return nil
 	}
 
@@ -34,6 +35,7 @@ func (t *C_notice__telegram) Init() error {
 
 }
 
+// 텔레그램 메세지 발송
 func (t *C_notice__telegram) Send(_n_chat__id, s_bot__id, _s_chat__message string) error {
 
 	log.Printf("Sending %s to chat_id: %s", _s_chat__message, _n_chat__id)
