@@ -14,17 +14,18 @@ type C_notice__sms struct {
 	cfg aws.Config
 
 	// AWS 접속 인증
-	s_access__id  string
-	s_access__key string
+	s_aws__access_key string
+	s_aws__secret_key string
+	s_aws__region     string
 
-	s_region  string
-	s_message string
-	s_mobile  string
-	s_title   string
+	// 메시지 발송 설정
+	s_msg__title string
+	s_msg__body  string
+	s_mobile     string
 }
 
 // SMS 발송
-func (t *C_notice__sms) Send(_s_message, _s_mobile string) error {
+func (t *C_notice__sms) Send(_s_msg__title, _s_msg__body, _s_mobile string) error {
 
 	err := t.Init()
 	if err != nil {
@@ -34,8 +35,8 @@ func (t *C_notice__sms) Send(_s_message, _s_mobile string) error {
 	client := sns.NewFromConfig(t.cfg)
 
 	_, err = client.Publish(context.TODO(), &sns.PublishInput{
-		Subject:     aws.String("Server Err alert"),
-		Message:     &_s_message,
+		Subject:     &_s_msg__title,
+		Message:     &_s_msg__body,
 		PhoneNumber: &_s_mobile,
 	})
 
@@ -51,17 +52,18 @@ func (t *C_notice__sms) Init() error {
 
 	read, err := ini.Load("config.ini")
 	if err != nil {
-		log.Println("[ERROR] Fail to read config.ini file : ", err)
+		log.Println("[ERROR] Not found config.ini file : ", err)
 		return err
 	}
 
-	t.s_access__id = read.Section("aws").Key("S_access__id").String()
-	t.s_access__key = read.Section("aws").Key("S_access__key").String()
-	t.s_region = read.Section("aws").Key("S_region").String()
+	title := "aws_configure"
+	t.s_aws__access_key = read.Section(title).Key("S_aws__access_key").String()
+	t.s_aws__secret_key = read.Section(title).Key("S_aws__secret_key").String()
+	t.s_aws__region = read.Section(title).Key("S_aws__region").String()
 
 	t.cfg = aws.Config{
-		Region:      *aws.String(t.s_region),
-		Credentials: credentials.NewStaticCredentialsProvider(t.s_access__id, t.s_access__key, ""),
+		Region:      *aws.String(t.s_aws__region),
+		Credentials: credentials.NewStaticCredentialsProvider(t.s_aws__access_key, t.s_aws__secret_key, ""),
 	}
 
 	return nil
