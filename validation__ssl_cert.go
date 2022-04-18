@@ -7,15 +7,14 @@ import (
 )
 
 type C_ssl_cert struct {
-	s_url      string
-	s_hostName string
+	s_url string
 }
 
 func (t *C_ssl_cert) Init() {
 }
 
 // SSL 인증서 유효성 만료일 체크
-func (t *C_ssl_cert) Get__expiryPeriod(_s_url string) (result bool, err error) {
+func (t *C_ssl_cert) Get__compare_expiryPeriod(_s_url string) (result bool, err error) {
 
 	url_port := _s_url + ":443"
 	conn, err := tls.Dial("tcp", url_port, nil)
