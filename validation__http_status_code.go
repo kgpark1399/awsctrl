@@ -6,8 +6,6 @@ import (
 )
 
 type C_http_status_code struct {
-	c_list_target C_list_target
-
 	s_url string
 }
 
@@ -16,7 +14,7 @@ func (t *C_http_status_code) Init() {
 }
 
 // HTTP 상태 및 코드 확인
-func (t *C_http_status_code) Get(_s_url string) (result bool, err error) {
+func (t *C_http_status_code) GetAndCompareStatus(_s_url string) (result bool, err error) {
 
 	http_url := "http://" + _s_url
 	resp, err := http.Get(http_url)
